@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { LogIn, Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -12,22 +13,81 @@ export default function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [mode, setMode] = useState<"login" | "setup">("login");
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError("");
 
-    // Mock login - in production, use Supabase auth
-    setTimeout(() => {
-      if (email && password) {
-        document.cookie = "sb-auth-token=demo-token; path=/; max-age=86400";
-        router.push("/admin");
-      } else {
-        setError("Please enter both email and password");
-      }
+    const { data, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (authError) {
+      setError(authError.message);
       setIsLoading(false);
-    }, 1000);
+      return;
+    }
+
+    // Check if user has admin role
+    if (data.user) {
+      const { data: profile, error: profileError } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", data.user.id)
+        .single();
+
+      if (profileError || !profile || (profile.role !== "admin" && profile.role !== "editor")) {
+        // Not an admin - sign out
+        await supabase.auth.signOut();
+        setError("Access denied. You are not authorized to access the admin panel.");
+        setIsLoading(false);
+        return;
+      }
+    }
+
+    router.push("/admin");
+    router.refresh();
+  };
+
+  const handleSetup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+
+    // Sign up the admin user
+    const { data, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (authError) {
+      setError(authError.message);
+      setIsLoading(false);
+      return;
+    }
+
+    if (data.user) {
+      // Create admin profile
+      const { error: profileError } = await supabase.from("users").insert({
+        id: data.user.id,
+        email,
+        full_name: "Admin",
+        role: "admin",
+        membership: "premium",
+      });
+
+      if (profileError) {
+        setError("Account created but profile setup failed. Please contact support.");
+        setIsLoading(false);
+        return;
+      }
+
+      router.push("/admin");
+      router.refresh();
+    }
   };
 
   return (
@@ -54,17 +114,24 @@ export default function AdminLoginPage() {
             </svg>
           </div>
           <h1 className="text-xl font-medium text-[#222222]">Grace Admin</h1>
-          <p className="text-sm text-[#888888] mt-1">Sign in to manage your content</p>
+          <p className="text-sm text-[#888888] mt-1">
+            {mode === "login"
+              ? "Sign in to manage your content"
+              : "Create your admin account"}
+          </p>
         </div>
 
-        {/* Login Form */}
+        {/* Form */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.2 }}
           className="bg-white rounded-xl border border-[#E8E4DC]/50 p-6 shadow-sm"
         >
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form
+            onSubmit={mode === "login" ? handleLogin : handleSetup}
+            className="space-y-4"
+          >
             <div>
               <label className="block text-sm font-medium text-[#666666] mb-1.5">
                 Email
@@ -88,7 +155,12 @@ export default function AdminLoginPage() {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
+                  placeholder={
+                    mode === "login"
+                      ? "Enter your password"
+                      : "Min 8 characters"
+                  }
+                  minLength={mode === "setup" ? 8 : undefined}
                   className="w-full h-11 px-4 pr-11 rounded-lg bg-[#FAF8F4] border border-[#E8E4DC] text-sm text-[#222222] placeholder:text-[#888888] focus:outline-none focus:ring-2 focus:ring-[#7A8A6E]/20 focus:border-[#7A8A6E]"
                   required
                 />
@@ -97,7 +169,11 @@ export default function AdminLoginPage() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-[#888888] hover:text-[#666666]"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
                 </button>
               </div>
             </div>
@@ -122,11 +198,27 @@ export default function AdminLoginPage() {
               ) : (
                 <>
                   <LogIn className="w-4 h-4" />
-                  Sign In
+                  {mode === "login" ? "Sign In" : "Create Admin Account"}
                 </>
               )}
             </button>
           </form>
+
+          {/* Toggle mode */}
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={() => {
+                setMode(mode === "login" ? "setup" : "login");
+                setError("");
+              }}
+              className="text-sm text-[#7A8A6E] hover:text-[#6A7A5E] transition-colors"
+            >
+              {mode === "login"
+                ? "First time? Create admin account"
+                : "Already have an account? Sign in"}
+            </button>
+          </div>
         </motion.div>
 
         <p className="text-center text-xs text-[#888888] mt-6">

@@ -20,6 +20,7 @@ import {
   PanelLeftClose,
   PanelLeft,
   ChevronDown,
+  LogOut,
 } from "lucide-react";
 import { useAdmin } from "@/lib/admin-context";
 import { cn } from "@/lib/utils";
@@ -214,10 +215,19 @@ export function AdminSidebar() {
               {user?.full_name?.charAt(0) || "A"}
             </div>
             {isSidebarOpen && (
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-[#222222] truncate">{user?.full_name || "Admin"}</p>
                 <p className="text-xs text-[#888888] capitalize">{user?.role}</p>
               </div>
+            )}
+            {isSidebarOpen && (
+              <button
+                onClick={() => { window.location.href = "/admin/logout"; }}
+                className="p-1.5 rounded-lg hover:bg-red-50 text-[#888888] hover:text-red-500 transition-colors"
+                title="Sign out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
             )}
           </div>
         </div>
