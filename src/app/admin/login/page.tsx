@@ -70,19 +70,27 @@ export default function AdminLoginPage() {
     }
 
     if (data.user) {
-      // Create admin profile
-      const { error: profileError } = await supabase.from("users").insert({
-        id: data.user.id,
-        email,
-        full_name: "Admin",
-        role: "admin",
-        membership: "premium",
+      // Create admin profile using RPC to bypass RLS
+      const { error: rpcError } = await supabase.rpc("create_admin_profile", {
+        user_id: data.user.id,
+        user_email: email,
       });
 
-      if (profileError) {
-        setError("Account created but profile setup failed. Please contact support.");
-        setIsLoading(false);
-        return;
+      if (rpcError) {
+        // Fallback: try direct insert
+        const { error: profileError } = await supabase.from("users").insert({
+          id: data.user.id,
+          email,
+          full_name: "Admin",
+          role: "admin",
+          membership: "premium",
+        });
+
+        if (profileError) {
+          setError(`Profile setup failed: ${profileError.message}`);
+          setIsLoading(false);
+          return;
+        }
       }
 
       router.push("/admin");
