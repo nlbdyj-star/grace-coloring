@@ -1,139 +1,41 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { LogIn, Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+
+const DEFAULT_USERNAME = "admin";
+const DEFAULT_PASSWORD = "admin";
+
+function getStoredPassword(): string {
+  if (typeof window === "undefined") return DEFAULT_PASSWORD;
+  return localStorage.getItem("admin_password") || DEFAULT_PASSWORD;
+}
 
 export default function AdminLoginPage() {
   const router = useRouter();
-
-  useEffect(() => {
-    console.log("SUPABASE_URL", process.env.NEXT_PUBLIC_SUPABASE_URL);
-    console.log(
-      "SUPABASE_KEY",
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.substring(0, 20)
-    );
-  }, []);
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [mode, setMode] = useState<"login" | "setup">("login");
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError("");
 
-    const { data, error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const expectedPassword = getStoredPassword();
 
-    if (authError) {
-      setError(authError.message);
-      setIsLoading(false);
-      return;
-    }
-
-    // Check if user has admin role
-    if (data.user) {
-      const { data: profile, error: profileError } = await supabase
-        .from("users")
-        .select("role")
-        .eq("id", data.user.id)
-        .single();
-
-      if (profileError || !profile || (profile.role !== "admin" && profile.role !== "editor")) {
-        // Not an admin - sign out
-        await supabase.auth.signOut();
-        setError("Access denied. You are not authorized to access the admin panel.");
-        setIsLoading(false);
-        return;
-      }
-    }
-
-    router.push("/admin");
-    router.refresh();
-  };
-
-  const handleSetup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError("");
-
-    try {
-      console.log("signUp started");
-      const { data, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-      console.log("signUp success", data.user?.id);
-
-      if (authError) {
-        setError(authError.message);
-        return;
-      }
-
-      if (!data.user) {
-        setError("Sign up failed: no user returned");
-        return;
-      }
-
-      // Try RPC first
-      console.log("create_admin_profile started");
-      const { error: rpcError } = await supabase.rpc("create_admin_profile", {
-        user_id: data.user.id,
-        user_email: email,
-      });
-
-      if (!rpcError) {
-        console.log("create_admin_profile success");
-        router.push("/admin");
-        router.refresh();
-        return;
-      }
-
-      // RPC failed - check if function exists
-      console.log("create_admin_profile failed:", rpcError.message);
-
-      if (rpcError.message.includes("Could not find the public.create_admin_profile")) {
-        console.log("RPC function not found, falling back to direct insert");
-      }
-
-      // Fallback: direct insert into users table
-      console.log("users insert started");
-      const { error: profileError } = await supabase.from("users").insert({
-        id: data.user.id,
-        email,
-        full_name: "Admin",
-        role: "admin",
-        membership: "premium",
-      });
-
-      if (profileError) {
-        console.log("users insert failed:", profileError.message);
-
-        if (profileError.message.includes("does not exist") || profileError.code === "42P01") {
-          setError("users table not found");
-          return;
-        }
-
-        setError(`Profile setup failed: ${profileError.message}`);
-        return;
-      }
-
-      console.log("users insert success");
+    if (username === DEFAULT_USERNAME && password === expectedPassword) {
+      // Set session cookie (expires in 7 days)
+      const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString();
+      document.cookie = `admin_session=authenticated; path=/; expires=${expires}; SameSite=Lax`;
+      localStorage.setItem("admin_logged_in", "true");
       router.push("/admin");
-      router.refresh();
-    } catch (err: any) {
-      console.error("handleSetup exception:", err);
-      setError(err?.message || "An unexpected error occurred");
-    } finally {
-      console.log("handleSetup finally: setIsLoading(false)");
+    } else {
+      setError("Invalid username or password");
       setIsLoading(false);
     }
   };
@@ -162,35 +64,29 @@ export default function AdminLoginPage() {
             </svg>
           </div>
           <h1 className="text-xl font-medium text-[#222222]">Grace Admin</h1>
-          <p className="text-sm text-[#888888] mt-1">
-            {mode === "login"
-              ? "Sign in to manage your content"
-              : "Create your admin account"}
-          </p>
+          <p className="text-sm text-[#888888] mt-1">Sign in to manage your content</p>
         </div>
 
-        {/* Form */}
+        {/* Login Form */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.2 }}
           className="bg-white rounded-xl border border-[#E8E4DC]/50 p-6 shadow-sm"
         >
-          <form
-            onSubmit={mode === "login" ? handleLogin : handleSetup}
-            className="space-y-4"
-          >
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-[#666666] mb-1.5">
-                Email
+                Username
               </label>
               <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@gracecoloring.com"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="admin"
                 className="w-full h-11 px-4 rounded-lg bg-[#FAF8F4] border border-[#E8E4DC] text-sm text-[#222222] placeholder:text-[#888888] focus:outline-none focus:ring-2 focus:ring-[#7A8A6E]/20 focus:border-[#7A8A6E]"
                 required
+                autoComplete="username"
               />
             </div>
 
@@ -203,25 +99,17 @@ export default function AdminLoginPage() {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder={
-                    mode === "login"
-                      ? "Enter your password"
-                      : "Min 8 characters"
-                  }
-                  minLength={mode === "setup" ? 8 : undefined}
+                  placeholder="Enter password"
                   className="w-full h-11 px-4 pr-11 rounded-lg bg-[#FAF8F4] border border-[#E8E4DC] text-sm text-[#222222] placeholder:text-[#888888] focus:outline-none focus:ring-2 focus:ring-[#7A8A6E]/20 focus:border-[#7A8A6E]"
                   required
+                  autoComplete="current-password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-[#888888] hover:text-[#666666]"
                 >
-                  {showPassword ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
@@ -246,31 +134,15 @@ export default function AdminLoginPage() {
               ) : (
                 <>
                   <LogIn className="w-4 h-4" />
-                  {mode === "login" ? "Sign In" : "Create Admin Account"}
+                  Sign In
                 </>
               )}
             </button>
           </form>
-
-          {/* Toggle mode */}
-          <div className="mt-4 text-center">
-            <button
-              type="button"
-              onClick={() => {
-                setMode(mode === "login" ? "setup" : "login");
-                setError("");
-              }}
-              className="text-sm text-[#7A8A6E] hover:text-[#6A7A5E] transition-colors"
-            >
-              {mode === "login"
-                ? "First time? Create admin account"
-                : "Already have an account? Sign in"}
-            </button>
-          </div>
         </motion.div>
 
         <p className="text-center text-xs text-[#888888] mt-6">
-          Protected area. Authorized personnel only.
+          Default login: admin / admin
         </p>
       </motion.div>
     </div>

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Settings, Globe, BarChart3, Mail, Upload } from "lucide-react";
+import { Settings, Globe, BarChart3, Mail, Upload, Lock, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function SettingsPage() {
@@ -24,6 +24,47 @@ export default function SettingsPage() {
     convertKitApiKey: "",
     brevoApiKey: "",
   });
+
+  // Password change state
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false,
+  });
+  const [passwordMessage, setPasswordMessage] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+
+  const handleChangePassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordMessage("");
+    setPasswordError("");
+
+    const storedPassword = localStorage.getItem("admin_password") || "admin";
+
+    if (currentPassword !== storedPassword) {
+      setPasswordError("Current password is incorrect");
+      return;
+    }
+
+    if (newPassword.length < 4) {
+      setPasswordError("New password must be at least 4 characters");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("New passwords do not match");
+      return;
+    }
+
+    localStorage.setItem("admin_password", newPassword);
+    setPasswordMessage("Password changed successfully");
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+  };
 
   return (
     <div className="space-y-6">
@@ -197,6 +238,94 @@ export default function SettingsPage() {
               />
             </div>
           </div>
+        </motion.div>
+
+        {/* Security / Change Password */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.35 }}
+          className="bg-white rounded-xl border border-[#E8E4DC]/50 p-6"
+        >
+          <div className="flex items-center gap-2 mb-6">
+            <Lock className="w-5 h-5 text-[#7A8A6E]" />
+            <h2 className="text-base font-medium text-[#222222]">Security</h2>
+          </div>
+          <form onSubmit={handleChangePassword} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-[#666666] mb-1.5">Current Password</label>
+              <div className="relative">
+                <input
+                  type={showPasswords.current ? "text" : "password"}
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Enter current password"
+                  className="w-full h-10 px-3 pr-10 rounded-lg bg-[#FAF8F4] border border-[#E8E4DC] text-sm text-[#222222] placeholder:text-[#888888] focus:outline-none focus:ring-2 focus:ring-[#7A8A6E]/20 focus:border-[#7A8A6E]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#888888] hover:text-[#666666]"
+                >
+                  {showPasswords.current ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#666666] mb-1.5">New Password</label>
+              <div className="relative">
+                <input
+                  type={showPasswords.new ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Min 4 characters"
+                  className="w-full h-10 px-3 pr-10 rounded-lg bg-[#FAF8F4] border border-[#E8E4DC] text-sm text-[#222222] placeholder:text-[#888888] focus:outline-none focus:ring-2 focus:ring-[#7A8A6E]/20 focus:border-[#7A8A6E]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#888888] hover:text-[#666666]"
+                >
+                  {showPasswords.new ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[#666666] mb-1.5">Confirm New Password</label>
+              <div className="relative">
+                <input
+                  type={showPasswords.confirm ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Repeat new password"
+                  className="w-full h-10 px-3 pr-10 rounded-lg bg-[#FAF8F4] border border-[#E8E4DC] text-sm text-[#222222] placeholder:text-[#888888] focus:outline-none focus:ring-2 focus:ring-[#7A8A6E]/20 focus:border-[#7A8A6E]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#888888] hover:text-[#666666]"
+                >
+                  {showPasswords.confirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {passwordError && (
+              <p className="text-sm text-red-500">{passwordError}</p>
+            )}
+            {passwordMessage && (
+              <p className="text-sm text-emerald-600">{passwordMessage}</p>
+            )}
+
+            <Button
+              type="submit"
+              variant="outline"
+              className="w-full border-[#7A8A6E] text-[#7A8A6E] hover:bg-[#E8EDE5] rounded-lg h-10 text-sm font-medium"
+            >
+              <Lock className="w-4 h-4 mr-2" />
+              Change Password
+            </Button>
+          </form>
         </motion.div>
       </div>
 
