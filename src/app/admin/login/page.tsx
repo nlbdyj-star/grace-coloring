@@ -57,44 +57,76 @@ export default function AdminLoginPage() {
     setIsLoading(true);
     setError("");
 
-    // Sign up the admin user
-    const { data, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+    try {
+      console.log("signUp started");
+      const { data, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+      console.log("signUp success", data.user?.id);
 
-    if (authError) {
-      setError(authError.message);
-      setIsLoading(false);
-      return;
-    }
+      if (authError) {
+        setError(authError.message);
+        return;
+      }
 
-    if (data.user) {
-      // Create admin profile using RPC to bypass RLS
+      if (!data.user) {
+        setError("Sign up failed: no user returned");
+        return;
+      }
+
+      // Try RPC first
+      console.log("create_admin_profile started");
       const { error: rpcError } = await supabase.rpc("create_admin_profile", {
         user_id: data.user.id,
         user_email: email,
       });
 
-      if (rpcError) {
-        // Fallback: try direct insert
-        const { error: profileError } = await supabase.from("users").insert({
-          id: data.user.id,
-          email,
-          full_name: "Admin",
-          role: "admin",
-          membership: "premium",
-        });
-
-        if (profileError) {
-          setError(`Profile setup failed: ${profileError.message}`);
-          setIsLoading(false);
-          return;
-        }
+      if (!rpcError) {
+        console.log("create_admin_profile success");
+        router.push("/admin");
+        router.refresh();
+        return;
       }
 
+      // RPC failed - check if function exists
+      console.log("create_admin_profile failed:", rpcError.message);
+
+      if (rpcError.message.includes("Could not find the public.create_admin_profile")) {
+        console.log("RPC function not found, falling back to direct insert");
+      }
+
+      // Fallback: direct insert into users table
+      console.log("users insert started");
+      const { error: profileError } = await supabase.from("users").insert({
+        id: data.user.id,
+        email,
+        full_name: "Admin",
+        role: "admin",
+        membership: "premium",
+      });
+
+      if (profileError) {
+        console.log("users insert failed:", profileError.message);
+
+        if (profileError.message.includes("does not exist") || profileError.code === "42P01") {
+          setError("users table not found");
+          return;
+        }
+
+        setError(`Profile setup failed: ${profileError.message}`);
+        return;
+      }
+
+      console.log("users insert success");
       router.push("/admin");
       router.refresh();
+    } catch (err: any) {
+      console.error("handleSetup exception:", err);
+      setError(err?.message || "An unexpected error occurred");
+    } finally {
+      console.log("handleSetup finally: setIsLoading(false)");
+      setIsLoading(false);
     }
   };
 
