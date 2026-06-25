@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { LogIn, Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -8,6 +8,14 @@ import { supabase } from "@/lib/supabase";
 
 export default function AdminLoginPage() {
   const router = useRouter();
+
+  useEffect(() => {
+    console.log("SUPABASE_URL", process.env.NEXT_PUBLIC_SUPABASE_URL);
+    console.log(
+      "SUPABASE_KEY",
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.substring(0, 20)
+    );
+  }, []);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
