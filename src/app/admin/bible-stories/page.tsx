@@ -1,110 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, Eye, Calendar, BookOpen } from "lucide-react";
+import { Plus, Eye, Calendar, BookOpen, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable, Column } from "@/components/admin/data-table";
 import { BibleStory } from "@/lib/supabase";
-
-const mockStories: BibleStory[] = [
-  {
-    id: "1",
-    title: "The Creation Story",
-    slug: "the-creation-story",
-    hero_image: "/images/stories/creation.jpg",
-    content: "In the beginning, God created the heavens and the earth...",
-    bible_verse: "In the beginning God created the heavens and the earth.",
-    bible_reference: "Genesis 1:1",
-    related_coloring_pages: ["1", "2"],
-    related_videos: ["1"],
-    category_id: "1",
-    seo_title: "The Creation Story - Bible Story",
-    seo_description: "Read the story of creation from Genesis.",
-    seo_keywords: ["creation", "genesis", "bible story"],
-    status: "published",
-    created_at: "2024-01-15T10:00:00Z",
-    updated_at: "2024-01-15T10:00:00Z",
-    published_at: "2024-01-15T10:00:00Z",
-  },
-  {
-    id: "2",
-    title: "Noah's Ark",
-    slug: "noahs-ark",
-    hero_image: "/images/stories/noahs-ark.jpg",
-    content: "God saw how corrupt the earth had become...",
-    bible_verse: "But Noah found favor in the eyes of the Lord.",
-    bible_reference: "Genesis 6:8",
-    related_coloring_pages: ["3", "4"],
-    related_videos: ["2"],
-    category_id: "2",
-    seo_title: "Noah's Ark - Bible Story",
-    seo_description: "The story of Noah and the great flood.",
-    seo_keywords: ["noah", "ark", "flood", "bible story"],
-    status: "published",
-    created_at: "2024-02-01T10:00:00Z",
-    updated_at: "2024-02-01T10:00:00Z",
-    published_at: "2024-02-01T10:00:00Z",
-  },
-  {
-    id: "3",
-    title: "David and Goliath",
-    slug: "david-and-goliath",
-    hero_image: "/images/stories/david-goliath.jpg",
-    content: "Now the Philistines gathered their forces for war...",
-    bible_verse: "The Lord who rescued me from the paw of the lion...",
-    bible_reference: "1 Samuel 17:37",
-    related_coloring_pages: ["5"],
-    related_videos: ["3"],
-    category_id: "3",
-    seo_title: "David and Goliath - Bible Story",
-    seo_description: "The inspiring story of David defeating Goliath.",
-    seo_keywords: ["david", "goliath", "courage", "bible story"],
-    status: "published",
-    created_at: "2024-02-20T10:00:00Z",
-    updated_at: "2024-02-20T10:00:00Z",
-    published_at: "2024-02-20T10:00:00Z",
-  },
-  {
-    id: "4",
-    title: "The Birth of Jesus",
-    slug: "birth-of-jesus",
-    hero_image: "/images/stories/birth-jesus.jpg",
-    content: "In those days Caesar Augustus issued a decree...",
-    bible_verse: "Today in the town of David a Savior has been born to you...",
-    bible_reference: "Luke 2:11",
-    related_coloring_pages: ["6", "7"],
-    related_videos: ["4"],
-    category_id: "1",
-    seo_title: "The Birth of Jesus - Bible Story",
-    seo_description: "The Christmas story of Jesus' birth in Bethlehem.",
-    seo_keywords: ["jesus", "birth", "christmas", "bible story"],
-    status: "draft",
-    created_at: "2024-03-05T10:00:00Z",
-    updated_at: "2024-03-05T10:00:00Z",
-    published_at: null,
-  },
-  {
-    id: "5",
-    title: "The Good Samaritan",
-    slug: "the-good-samaritan",
-    hero_image: "/images/stories/good-samaritan.jpg",
-    content: "A man was going down from Jerusalem to Jericho...",
-    bible_verse: "Love your neighbor as yourself.",
-    bible_reference: "Luke 10:27",
-    related_coloring_pages: ["8"],
-    related_videos: ["5"],
-    category_id: "2",
-    seo_title: "The Good Samaritan - Bible Story",
-    seo_description: "Jesus teaches about loving your neighbor.",
-    seo_keywords: ["samaritan", "love", "neighbor", "bible story"],
-    status: "published",
-    created_at: "2024-03-10T10:00:00Z",
-    updated_at: "2024-03-10T10:00:00Z",
-    published_at: "2024-03-10T10:00:00Z",
-  },
-];
+import { supabase } from "@/lib/supabase";
 
 const statusColors: Record<string, string> = {
   published: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -120,11 +22,7 @@ const columns: Column<BibleStory>[] = [
     render: (story) => (
       <div className="relative w-14 h-10 rounded-lg overflow-hidden bg-[#F5F2EC]">
         {story.hero_image ? (
-          <img
-            src={story.hero_image}
-            alt={story.title}
-            className="w-full h-full object-cover"
-          />
+          <img src={story.hero_image} alt={story.title} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <BookOpen className="w-4 h-4 text-[#888888]" />
@@ -169,13 +67,12 @@ const columns: Column<BibleStory>[] = [
     ),
   },
   {
-    key: "views",
-    header: "Views",
-    width: "100px",
+    key: "related",
+    header: "Related Content",
+    width: "130px",
     render: (story) => (
-      <div className="flex items-center gap-1 text-sm text-[#666666]">
-        <Eye className="w-3.5 h-3.5" />
-        {(story.related_coloring_pages.length * 1200 + story.related_videos.length * 3400).toLocaleString()}
+      <div className="text-xs text-[#666666]">
+        {(story.related_coloring_pages || []).length} coloring, {(story.related_videos || []).length} videos
       </div>
     ),
   },
@@ -194,7 +91,32 @@ const columns: Column<BibleStory>[] = [
 ];
 
 export default function BibleStoriesPage() {
-  const [stories] = useState<BibleStory[]>(mockStories);
+  const [stories, setStories] = useState<BibleStory[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchStories() {
+      try {
+        const { data, error } = await supabase
+          .from("bible_stories")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          setError(error.message);
+        } else {
+          setStories(data || []);
+        }
+      } catch (err: any) {
+        setError(err?.message || "Failed to fetch Bible stories");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchStories();
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -209,12 +131,13 @@ export default function BibleStoriesPage() {
           <h1 className="text-2xl font-medium text-[#222222]">Bible Stories</h1>
           <p className="text-sm text-[#666666] mt-1">Manage your Bible story collection</p>
         </div>
-        <Link href="/admin/bible-stories/new">
-          <Button className="bg-[#7A8A6E] hover:bg-[#6A7A5E] text-white rounded-lg h-10 px-5 text-sm font-medium gap-2">
-            <Plus className="w-4 h-4" />
-            New Story
-          </Button>
-        </Link>
+        <Button
+          onClick={() => alert("Add Bible story feature coming soon. Please add stories directly in Supabase for now.")}
+          className="bg-[#7A8A6E] hover:bg-[#6A7A5E] text-white rounded-lg h-10 px-5 text-sm font-medium gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          New Story
+        </Button>
       </motion.div>
 
       {/* Stats */}
@@ -223,7 +146,7 @@ export default function BibleStoriesPage() {
           { label: "Total", value: stories.length },
           { label: "Published", value: stories.filter((s) => s.status === "published").length },
           { label: "Drafts", value: stories.filter((s) => s.status === "draft").length },
-          { label: "Related Content", value: stories.reduce((sum, s) => sum + s.related_coloring_pages.length + s.related_videos.length, 0) },
+          { label: "Related Content", value: stories.reduce((sum, s) => sum + (s.related_coloring_pages || []).length + (s.related_videos || []).length, 0) },
         ].map((stat) => (
           <div
             key={stat.label}
@@ -235,20 +158,38 @@ export default function BibleStoriesPage() {
         ))}
       </div>
 
-      {/* Table */}
-      <DataTable
-        data={stories}
-        columns={columns}
-        keyExtractor={(s) => s.id}
-        searchPlaceholder="Search stories..."
-        filterOptions={[
-          { label: "Published", value: "published" },
-          { label: "Draft", value: "draft" },
-          { label: "Archived", value: "archived" },
-        ]}
-        onEdit={(story) => console.log("Edit", story.id)}
-        onDelete={(story) => console.log("Delete", story.id)}
-      />
+      {error && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
+          <p className="font-medium">Data Loading Issue</p>
+          <p className="mt-1">{error}</p>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 text-[#7A8A6E] animate-spin" />
+        </div>
+      ) : stories.length === 0 ? (
+        <div className="bg-white rounded-xl border border-[#E8E4DC]/50 p-12 text-center">
+          <BookOpen className="w-12 h-12 text-[#E8E4DC] mx-auto mb-4" />
+          <h3 className="text-base font-medium text-[#222222]">No Bible stories yet</h3>
+          <p className="text-sm text-[#888888] mt-1">Bible stories will appear here when you add them.</p>
+        </div>
+      ) : (
+        <DataTable
+          data={stories}
+          columns={columns}
+          keyExtractor={(s) => s.id}
+          searchPlaceholder="Search stories..."
+          filterOptions={[
+            { label: "Published", value: "published" },
+            { label: "Draft", value: "draft" },
+            { label: "Archived", value: "archived" },
+          ]}
+          onEdit={(story) => console.log("Edit", story.id)}
+          onDelete={(story) => console.log("Delete", story.id)}
+        />
+      )}
     </div>
   );
 }

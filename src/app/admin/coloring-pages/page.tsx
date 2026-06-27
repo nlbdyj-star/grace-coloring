@@ -1,125 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, Download, Heart, Eye, Calendar, Zap } from "lucide-react";
+import { Plus, Download, Heart, Eye, Calendar, Palette, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable, Column } from "@/components/admin/data-table";
 import { ColoringPage } from "@/lib/supabase";
-
-const mockPages: ColoringPage[] = [
-  {
-    id: "1",
-    title: "Jesus Blesses the Children",
-    slug: "jesus-blesses-children",
-    category_id: "1",
-    bible_character: "Jesus",
-    story: "Jesus welcomes the little children",
-    tags: ["jesus", "children", "blessing"],
-    line_art_image: "/images/coloring/jesus-children-line.jpg",
-    colored_preview_image: "/images/coloring/jesus-children-color.jpg",
-    pdf_file: "/downloads/jesus-children.pdf",
-    difficulty: "easy",
-    downloads_count: 3420,
-    views_count: 8900,
-    favorites_count: 1250,
-    seo_title: "Jesus Blesses the Children Coloring Page",
-    seo_description: "Color Jesus blessing the children. A beautiful Bible coloring page for all ages.",
-    seo_keywords: ["jesus", "children", "coloring page", "bible"],
-    status: "published",
-    created_at: "2024-01-10T10:00:00Z",
-    updated_at: "2024-01-10T10:00:00Z",
-  },
-  {
-    id: "2",
-    title: "The Good Shepherd",
-    slug: "the-good-shepherd",
-    category_id: "1",
-    bible_character: "Jesus",
-    story: "Jesus is the Good Shepherd",
-    tags: ["jesus", "shepherd", "sheep", "john 10"],
-    line_art_image: "/images/coloring/good-shepherd-line.jpg",
-    colored_preview_image: "/images/coloring/good-shepherd-color.jpg",
-    pdf_file: "/downloads/good-shepherd.pdf",
-    difficulty: "medium",
-    downloads_count: 2650,
-    views_count: 7200,
-    favorites_count: 980,
-    seo_title: "The Good Shepherd Coloring Page",
-    seo_description: "Color Jesus as the Good Shepherd with His flock. A peaceful Bible coloring activity.",
-    seo_keywords: ["good shepherd", "jesus", "sheep", "coloring"],
-    status: "published",
-    created_at: "2024-01-20T10:00:00Z",
-    updated_at: "2024-01-20T10:00:00Z",
-  },
-  {
-    id: "3",
-    title: "Walking on Water",
-    slug: "walking-on-water",
-    category_id: "5",
-    bible_character: "Jesus",
-    story: "Peter walks on water with Jesus",
-    tags: ["miracle", "jesus", "water", "peter"],
-    line_art_image: "/images/coloring/walking-water-line.jpg",
-    colored_preview_image: "/images/coloring/walking-water-color.jpg",
-    pdf_file: "/downloads/walking-water.pdf",
-    difficulty: "hard",
-    downloads_count: 1890,
-    views_count: 5400,
-    favorites_count: 650,
-    seo_title: "Walking on Water Coloring Page",
-    seo_description: "Color the miracle of Jesus walking on water. An inspiring Bible story coloring page.",
-    seo_keywords: ["walking on water", "miracle", "jesus", "peter"],
-    status: "published",
-    created_at: "2024-02-05T10:00:00Z",
-    updated_at: "2024-02-05T10:00:00Z",
-  },
-  {
-    id: "4",
-    title: "Daniel in the Lions' Den",
-    slug: "daniel-lions-den",
-    category_id: "3",
-    bible_character: "Daniel",
-    story: "Daniel survives the lions' den through faith",
-    tags: ["daniel", "lions", "faith", "courage"],
-    line_art_image: "/images/coloring/daniel-line.jpg",
-    colored_preview_image: "/images/coloring/daniel-color.jpg",
-    pdf_file: "/downloads/daniel-lions.pdf",
-    difficulty: "medium",
-    downloads_count: 2100,
-    views_count: 6100,
-    favorites_count: 780,
-    seo_title: "Daniel in the Lions' Den Coloring Page",
-    seo_description: "Color Daniel peacefully among the lions. A story of faith and divine protection.",
-    seo_keywords: ["daniel", "lions", "faith", "coloring page"],
-    status: "published",
-    created_at: "2024-02-15T10:00:00Z",
-    updated_at: "2024-02-15T10:00:00Z",
-  },
-  {
-    id: "5",
-    title: "The Last Supper",
-    slug: "the-last-supper",
-    category_id: "1",
-    bible_character: "Jesus",
-    story: "Jesus shares the last supper with His disciples",
-    tags: ["jesus", "last supper", "disciples", "easter"],
-    line_art_image: "/images/coloring/last-supper-line.jpg",
-    colored_preview_image: "/images/coloring/last-supper-color.jpg",
-    pdf_file: "/downloads/last-supper.pdf",
-    difficulty: "hard",
-    downloads_count: 1560,
-    views_count: 4800,
-    favorites_count: 520,
-    seo_title: "The Last Supper Coloring Page",
-    seo_description: "Color the Last Supper scene. A detailed Bible coloring page for older children and adults.",
-    seo_keywords: ["last supper", "jesus", "disciples", "easter"],
-    status: "draft",
-    created_at: "2024-03-01T10:00:00Z",
-    updated_at: "2024-03-01T10:00:00Z",
-  },
-];
+import { supabase } from "@/lib/supabase";
 
 const difficultyColors: Record<string, string> = {
   easy: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -140,11 +27,13 @@ const columns: Column<ColoringPage>[] = [
     width: "70px",
     render: (page) => (
       <div className="relative w-10 h-14 rounded-lg overflow-hidden bg-[#F5F2EC]">
-        <img
-          src={page.line_art_image}
-          alt={page.title}
-          className="w-full h-full object-cover"
-        />
+        {page.line_art_image ? (
+          <img src={page.line_art_image} alt={page.title} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Palette className="w-4 h-4 text-[#888888]" />
+          </div>
+        )}
       </div>
     ),
   },
@@ -180,15 +69,15 @@ const columns: Column<ColoringPage>[] = [
       <div className="flex items-center gap-3 text-xs text-[#666666]">
         <span className="flex items-center gap-1">
           <Download className="w-3 h-3" />
-          {page.downloads_count.toLocaleString()}
+          {(page.downloads_count || 0).toLocaleString()}
         </span>
         <span className="flex items-center gap-1">
           <Heart className="w-3 h-3" />
-          {page.favorites_count.toLocaleString()}
+          {(page.favorites_count || 0).toLocaleString()}
         </span>
         <span className="flex items-center gap-1">
           <Eye className="w-3 h-3" />
-          {page.views_count.toLocaleString()}
+          {(page.views_count || 0).toLocaleString()}
         </span>
       </div>
     ),
@@ -222,7 +111,32 @@ const columns: Column<ColoringPage>[] = [
 ];
 
 export default function ColoringPagesPage() {
-  const [pages] = useState<ColoringPage[]>(mockPages);
+  const [pages, setPages] = useState<ColoringPage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchPages() {
+      try {
+        const { data, error } = await supabase
+          .from("coloring_pages")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          setError(error.message);
+        } else {
+          setPages(data || []);
+        }
+      } catch (err: any) {
+        setError(err?.message || "Failed to fetch coloring pages");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchPages();
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -237,21 +151,13 @@ export default function ColoringPagesPage() {
           <h1 className="text-2xl font-medium text-[#222222]">Coloring Pages</h1>
           <p className="text-sm text-[#666666] mt-1">Manage your coloring page collection</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            className="border-[#E8E4DC] text-[#666666] hover:bg-[#F5F2EC] rounded-lg h-10 px-4 text-sm gap-2"
-          >
-            <Zap className="w-4 h-4" />
-            Batch SEO
-          </Button>
-          <Link href="/admin/coloring-pages/new">
-            <Button className="bg-[#7A8A6E] hover:bg-[#6A7A5E] text-white rounded-lg h-10 px-5 text-sm font-medium gap-2">
-              <Plus className="w-4 h-4" />
-              Add Page
-            </Button>
-          </Link>
-        </div>
+        <Button
+          onClick={() => alert("Add coloring page feature coming soon. Please add pages directly in Supabase for now.")}
+          className="bg-[#7A8A6E] hover:bg-[#6A7A5E] text-white rounded-lg h-10 px-5 text-sm font-medium gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          Add Page
+        </Button>
       </motion.div>
 
       {/* Stats */}
@@ -260,7 +166,7 @@ export default function ColoringPagesPage() {
           { label: "Total", value: pages.length },
           { label: "Published", value: pages.filter((p) => p.status === "published").length },
           { label: "Drafts", value: pages.filter((p) => p.status === "draft").length },
-          { label: "Downloads", value: pages.reduce((sum, p) => sum + p.downloads_count, 0).toLocaleString() },
+          { label: "Downloads", value: pages.reduce((sum, p) => sum + (p.downloads_count || 0), 0).toLocaleString() },
         ].map((stat) => (
           <div
             key={stat.label}
@@ -272,22 +178,40 @@ export default function ColoringPagesPage() {
         ))}
       </div>
 
-      {/* Table */}
-      <DataTable
-        data={pages}
-        columns={columns}
-        keyExtractor={(p) => p.id}
-        searchPlaceholder="Search coloring pages..."
-        filterOptions={[
-          { label: "Published", value: "published" },
-          { label: "Draft", value: "draft" },
-          { label: "Easy", value: "easy" },
-          { label: "Medium", value: "medium" },
-          { label: "Hard", value: "hard" },
-        ]}
-        onEdit={(page) => console.log("Edit", page.id)}
-        onDelete={(page) => console.log("Delete", page.id)}
-      />
+      {error && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
+          <p className="font-medium">Data Loading Issue</p>
+          <p className="mt-1">{error}</p>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 text-[#7A8A6E] animate-spin" />
+        </div>
+      ) : pages.length === 0 ? (
+        <div className="bg-white rounded-xl border border-[#E8E4DC]/50 p-12 text-center">
+          <Palette className="w-12 h-12 text-[#E8E4DC] mx-auto mb-4" />
+          <h3 className="text-base font-medium text-[#222222]">No coloring pages yet</h3>
+          <p className="text-sm text-[#888888] mt-1">Coloring pages will appear here when you add them.</p>
+        </div>
+      ) : (
+        <DataTable
+          data={pages}
+          columns={columns}
+          keyExtractor={(p) => p.id}
+          searchPlaceholder="Search coloring pages..."
+          filterOptions={[
+            { label: "Published", value: "published" },
+            { label: "Draft", value: "draft" },
+            { label: "Easy", value: "easy" },
+            { label: "Medium", value: "medium" },
+            { label: "Hard", value: "hard" },
+          ]}
+          onEdit={(page) => console.log("Edit", page.id)}
+          onDelete={(page) => console.log("Delete", page.id)}
+        />
+      )}
     </div>
   );
 }

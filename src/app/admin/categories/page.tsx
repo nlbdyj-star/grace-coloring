@@ -1,96 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, Tag } from "lucide-react";
+import { Plus, Tag, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable, Column } from "@/components/admin/data-table";
 import { Category } from "@/lib/supabase";
-
-const mockCategories: Category[] = [
-  {
-    id: "1",
-    name: "Jesus & Miracles",
-    slug: "jesus-miracles",
-    description: "Stories and coloring pages about Jesus and His miracles",
-    type: "all",
-    sort_order: 1,
-    created_at: "2024-01-01T10:00:00Z",
-  },
-  {
-    id: "2",
-    name: "Old Testament",
-    slug: "old-testament",
-    description: "Stories from the Old Testament",
-    type: "story",
-    sort_order: 2,
-    created_at: "2024-01-01T10:00:00Z",
-  },
-  {
-    id: "3",
-    name: "New Testament",
-    slug: "new-testament",
-    description: "Stories from the New Testament",
-    type: "story",
-    sort_order: 3,
-    created_at: "2024-01-01T10:00:00Z",
-  },
-  {
-    id: "4",
-    name: "Animals & Nature",
-    slug: "animals-nature",
-    description: "Coloring pages featuring animals and nature scenes",
-    type: "coloring",
-    sort_order: 4,
-    created_at: "2024-01-01T10:00:00Z",
-  },
-  {
-    id: "5",
-    name: "Faith & Prayer",
-    slug: "faith-prayer",
-    description: "Wallpapers and content about faith and prayer",
-    type: "wallpaper",
-    sort_order: 5,
-    created_at: "2024-01-01T10:00:00Z",
-  },
-  {
-    id: "6",
-    name: "Bible Verses",
-    slug: "bible-verses",
-    description: "Typography and verse-based content",
-    type: "wallpaper",
-    sort_order: 6,
-    created_at: "2024-01-01T10:00:00Z",
-  },
-  {
-    id: "7",
-    name: "Parables",
-    slug: "parables",
-    description: "Jesus' parables and teachings",
-    type: "video",
-    sort_order: 7,
-    created_at: "2024-01-01T10:00:00Z",
-  },
-  {
-    id: "8",
-    name: "Heroes of Faith",
-    slug: "heroes-of-faith",
-    description: "Stories of biblical heroes",
-    type: "all",
-    sort_order: 8,
-    created_at: "2024-01-01T10:00:00Z",
-  },
-  {
-    id: "9",
-    name: "Holiday Specials",
-    slug: "holiday-specials",
-    description: "Christmas, Easter, and other holiday content",
-    type: "all",
-    sort_order: 9,
-    created_at: "2024-01-01T10:00:00Z",
-  },
-];
+import { supabase } from "@/lib/supabase";
 
 const typeColors: Record<string, string> = {
   all: "bg-[#7A8A6E]/10 text-[#7A8A6E] border-[#7A8A6E]/20",
@@ -144,7 +60,32 @@ const columns: Column<Category>[] = [
 ];
 
 export default function CategoriesPage() {
-  const [categories] = useState<Category[]>(mockCategories);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchCategories() {
+      try {
+        const { data, error } = await supabase
+          .from("categories")
+          .select("*")
+          .order("sort_order", { ascending: true });
+
+        if (error) {
+          setError(error.message);
+        } else {
+          setCategories(data || []);
+        }
+      } catch (err: any) {
+        setError(err?.message || "Failed to fetch categories");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchCategories();
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -159,30 +100,49 @@ export default function CategoriesPage() {
           <h1 className="text-2xl font-medium text-[#222222]">Categories</h1>
           <p className="text-sm text-[#666666] mt-1">Manage content categories</p>
         </div>
-        <Link href="/admin/categories/new">
-          <Button className="bg-[#7A8A6E] hover:bg-[#6A7A5E] text-white rounded-lg h-10 px-5 text-sm font-medium gap-2">
-            <Plus className="w-4 h-4" />
-            New Category
-          </Button>
-        </Link>
+        <Button
+          onClick={() => alert("Add category feature coming soon. Please add categories directly in Supabase for now.")}
+          className="bg-[#7A8A6E] hover:bg-[#6A7A5E] text-white rounded-lg h-10 px-5 text-sm font-medium gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          New Category
+        </Button>
       </motion.div>
 
-      {/* Table */}
-      <DataTable
-        data={categories}
-        columns={columns}
-        keyExtractor={(c) => c.id}
-        searchPlaceholder="Search categories..."
-        filterOptions={[
-          { label: "All", value: "all" },
-          { label: "Video", value: "video" },
-          { label: "Coloring", value: "coloring" },
-          { label: "Wallpaper", value: "wallpaper" },
-          { label: "Story", value: "story" },
-        ]}
-        onEdit={(category) => console.log("Edit", category.id)}
-        onDelete={(category) => console.log("Delete", category.id)}
-      />
+      {error && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
+          <p className="font-medium">Data Loading Issue</p>
+          <p className="mt-1">{error}</p>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 text-[#7A8A6E] animate-spin" />
+        </div>
+      ) : categories.length === 0 ? (
+        <div className="bg-white rounded-xl border border-[#E8E4DC]/50 p-12 text-center">
+          <Tag className="w-12 h-12 text-[#E8E4DC] mx-auto mb-4" />
+          <h3 className="text-base font-medium text-[#222222]">No categories yet</h3>
+          <p className="text-sm text-[#888888] mt-1">Categories will appear here when you add them.</p>
+        </div>
+      ) : (
+        <DataTable
+          data={categories}
+          columns={columns}
+          keyExtractor={(c) => c.id}
+          searchPlaceholder="Search categories..."
+          filterOptions={[
+            { label: "All", value: "all" },
+            { label: "Video", value: "video" },
+            { label: "Coloring", value: "coloring" },
+            { label: "Wallpaper", value: "wallpaper" },
+            { label: "Story", value: "story" },
+          ]}
+          onEdit={(category) => console.log("Edit", category.id)}
+          onDelete={(category) => console.log("Delete", category.id)}
+        />
+      )}
     </div>
   );
 }

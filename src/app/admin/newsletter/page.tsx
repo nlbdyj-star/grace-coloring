@@ -1,70 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Download, Mail, CheckCircle, XCircle, Calendar } from "lucide-react";
+import { Download, Mail, CheckCircle, XCircle, Calendar, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable, Column } from "@/components/admin/data-table";
 import { Newsletter } from "@/lib/supabase";
-
-const mockSubscribers: Newsletter[] = [
-  {
-    id: "1",
-    email: "sarah.johnson@email.com",
-    subscribed: true,
-    source: "website",
-    created_at: "2024-01-15T10:00:00Z",
-  },
-  {
-    id: "2",
-    email: "michael.chen@email.com",
-    subscribed: true,
-    source: "popup",
-    created_at: "2024-02-01T10:00:00Z",
-  },
-  {
-    id: "3",
-    email: "emma.davis@email.com",
-    subscribed: false,
-    source: "website",
-    created_at: "2024-02-10T10:00:00Z",
-  },
-  {
-    id: "4",
-    email: "james.wilson@email.com",
-    subscribed: true,
-    source: "footer",
-    created_at: "2023-12-20T10:00:00Z",
-  },
-  {
-    id: "5",
-    email: "olivia.brown@email.com",
-    subscribed: true,
-    source: "popup",
-    created_at: "2024-03-01T10:00:00Z",
-  },
-  {
-    id: "6",
-    email: "william.taylor@email.com",
-    subscribed: true,
-    source: "website",
-    created_at: "2024-01-25T10:00:00Z",
-  },
-  {
-    id: "7",
-    email: "sophia.martinez@email.com",
-    subscribed: false,
-    source: "footer",
-    created_at: "2024-02-28T10:00:00Z",
-  },
-  {
-    id: "8",
-    email: "benjamin.lee@email.com",
-    subscribed: true,
-    source: "popup",
-    created_at: "2024-03-05T10:00:00Z",
-  },
-];
+import { supabase } from "@/lib/supabase";
 
 const columns: Column<Newsletter>[] = [
   {
@@ -82,12 +24,11 @@ const columns: Column<Newsletter>[] = [
     header: "Status",
     width: "120px",
     render: (subscriber) => (
-      <button
-        onClick={() => console.log("Toggle subscription", subscriber.id)}
-        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+      <span
+        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${
           subscriber.subscribed
-            ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-            : "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+            : "bg-red-50 text-red-700 border-red-200"
         }`}
       >
         {subscriber.subscribed ? (
@@ -101,7 +42,7 @@ const columns: Column<Newsletter>[] = [
             Unsubscribed
           </>
         )}
-      </button>
+      </span>
     ),
   },
   {
@@ -109,7 +50,7 @@ const columns: Column<Newsletter>[] = [
     header: "Source",
     width: "100px",
     render: (subscriber) => (
-      <span className="text-sm text-[#666666] capitalize">{subscriber.source}</span>
+      <span className="text-sm text-[#666666] capitalize">{subscriber.source || "—"}</span>
     ),
   },
   {
@@ -127,7 +68,33 @@ const columns: Column<Newsletter>[] = [
 ];
 
 export default function NewsletterPage() {
-  const [subscribers] = useState<Newsletter[]>(mockSubscribers);
+  const [subscribers, setSubscribers] = useState<Newsletter[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchSubscribers() {
+      try {
+        const { data, error } = await supabase
+          .from("newsletter")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          setError(error.message);
+        } else {
+          setSubscribers(data || []);
+        }
+      } catch (err: any) {
+        setError(err?.message || "Failed to fetch subscribers");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchSubscribers();
+  }, []);
+
   const activeSubscribers = subscribers.filter((s) => s.subscribed).length;
 
   return (
@@ -169,19 +136,37 @@ export default function NewsletterPage() {
         ))}
       </div>
 
-      {/* Table */}
-      <DataTable
-        data={subscribers}
-        columns={columns}
-        keyExtractor={(s) => s.id}
-        searchPlaceholder="Search subscribers..."
-        filterOptions={[
-          { label: "Subscribed", value: "subscribed" },
-          { label: "Unsubscribed", value: "unsubscribed" },
-        ]}
-        onEdit={(subscriber) => console.log("Edit", subscriber.id)}
-        onDelete={(subscriber) => console.log("Delete", subscriber.id)}
-      />
+      {error && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
+          <p className="font-medium">Data Loading Issue</p>
+          <p className="mt-1">{error}</p>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 text-[#7A8A6E] animate-spin" />
+        </div>
+      ) : subscribers.length === 0 ? (
+        <div className="bg-white rounded-xl border border-[#E8E4DC]/50 p-12 text-center">
+          <Mail className="w-12 h-12 text-[#E8E4DC] mx-auto mb-4" />
+          <h3 className="text-base font-medium text-[#222222]">No subscribers yet</h3>
+          <p className="text-sm text-[#888888] mt-1">Subscribers will appear here when they sign up for your newsletter.</p>
+        </div>
+      ) : (
+        <DataTable
+          data={subscribers}
+          columns={columns}
+          keyExtractor={(s) => s.id}
+          searchPlaceholder="Search subscribers..."
+          filterOptions={[
+            { label: "Subscribed", value: "subscribed" },
+            { label: "Unsubscribed", value: "unsubscribed" },
+          ]}
+          onEdit={(subscriber) => console.log("Edit", subscriber.id)}
+          onDelete={(subscriber) => console.log("Delete", subscriber.id)}
+        />
+      )}
     </div>
   );
 }

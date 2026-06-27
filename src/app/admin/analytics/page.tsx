@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { DownloadIcon, TrendingUp, BarChart3, Calendar } from "lucide-react";
+import { DownloadIcon, TrendingUp, BarChart3, Calendar, Loader2 } from "lucide-react";
 import {
   AreaChart,
   Area,
@@ -15,37 +15,14 @@ import {
   Bar,
 } from "recharts";
 import { DataTable, Column } from "@/components/admin/data-table";
+import { supabase } from "@/lib/supabase";
 
-const downloadsOverTime = [
-  { date: "Mar 1", downloads: 120 },
-  { date: "Mar 2", downloads: 145 },
-  { date: "Mar 3", downloads: 132 },
-  { date: "Mar 4", downloads: 178 },
-  { date: "Mar 5", downloads: 190 },
-  { date: "Mar 6", downloads: 210 },
-  { date: "Mar 7", downloads: 245 },
-  { date: "Mar 8", downloads: 230 },
-  { date: "Mar 9", downloads: 267 },
-  { date: "Mar 10", downloads: 289 },
-];
-
-const downloadsByType = [
-  { type: "Coloring Pages", count: 1240, fill: "#7A8A6E" },
-  { type: "Wallpapers", count: 890, fill: "#A8B89C" },
-  { type: "Videos", count: 560, fill: "#C4D4B8" },
-  { type: "PDFs", count: 420, fill: "#E0E8D8" },
-];
-
-const topDownloadedItems = [
-  { id: "1", title: "Jesus Blesses the Children", type: "coloring", downloads: 3420 },
-  { id: "2", title: "Sunset Cross", type: "wallpaper", downloads: 2890 },
-  { id: "3", title: "The Good Shepherd", type: "coloring", downloads: 2650 },
-  { id: "4", title: "Mountain Prayer", type: "wallpaper", downloads: 2100 },
-  { id: "5", title: "Daniel in the Lions' Den", type: "coloring", downloads: 1980 },
-  { id: "6", title: "Jesus Calms the Storm", type: "video", downloads: 1560 },
-  { id: "7", title: "Walking on Water", type: "coloring", downloads: 1450 },
-  { id: "8", title: "Bible Verse Typography", type: "wallpaper", downloads: 1320 },
-];
+interface DownloadItem {
+  id: string;
+  title: string;
+  type: string;
+  downloads: number;
+}
 
 const typeLabels: Record<string, string> = {
   coloring: "Coloring Page",
@@ -61,14 +38,7 @@ const typeColors: Record<string, string> = {
   pdf: "bg-amber-50 text-amber-700 border-amber-200",
 };
 
-interface TopItem {
-  id: string;
-  title: string;
-  type: string;
-  downloads: number;
-}
-
-const topItemsColumns: Column<TopItem>[] = [
+const topItemsColumns: Column<DownloadItem>[] = [
   {
     key: "title",
     header: "Title",
@@ -83,10 +53,10 @@ const topItemsColumns: Column<TopItem>[] = [
     render: (item) => (
       <span
         className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${
-          typeColors[item.type]
+          typeColors[item.type] || typeColors.pdf
         }`}
       >
-        {typeLabels[item.type]}
+        {typeLabels[item.type] || item.type}
       </span>
     ),
   },
@@ -105,11 +75,76 @@ const topItemsColumns: Column<TopItem>[] = [
 ];
 
 export default function AnalyticsPage() {
-  const [topItems] = useState<TopItem[]>(topDownloadedItems);
-  const totalDownloads = downloadsByType.reduce((sum, d) => sum + d.count, 0);
-  const avgDaily = Math.round(
-    downloadsOverTime.reduce((sum, d) => sum + d.downloads, 0) / downloadsOverTime.length
-  );
+  const [downloads, setDownloads] = useState<any[]>([]);
+  const [topItems, setTopItems] = useState<DownloadItem[]>([]);
+  const [downloadsByType, setDownloadsByType] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        // Fetch all downloads
+        const { data: downloadData, error: downloadError } = await supabase
+          .from("downloads")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (downloadError) {
+          setError(downloadError.message);
+          setLoading(false);
+          return;
+        }
+
+        setDownloads(downloadData || []);
+
+        // Aggregate downloads by type
+        const typeCounts: Record<string, number> = {};
+        (downloadData || []).forEach((d) => {
+          typeCounts[d.content_type] = (typeCounts[d.content_type] || 0) + 1;
+        });
+
+        const byType = Object.entries(typeCounts).map(([type, count]) => ({
+          type: typeLabels[type] || type,
+          count,
+          fill: type === "coloring" ? "#7A8A6E" : type === "wallpaper" ? "#A8B89C" : type === "video" ? "#C4D4B8" : "#E0E8D8",
+        }));
+        setDownloadsByType(byType);
+
+        // For top items, we need to join with content tables
+        // Since we can't do complex joins easily, let's just show download records grouped by content
+        const contentCounts: Record<string, { title: string; type: string; count: number }> = {};
+        (downloadData || []).forEach((d) => {
+          const key = `${d.content_type}-${d.content_id}`;
+          if (!contentCounts[key]) {
+            contentCounts[key] = { title: `${d.content_type} #${d.content_id}`, type: d.content_type, count: 0 };
+          }
+          contentCounts[key].count += 1;
+        });
+
+        const top = Object.values(contentCounts)
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 10)
+          .map((item, index) => ({
+            id: String(index + 1),
+            title: item.title,
+            type: item.type,
+            downloads: item.count,
+          }));
+
+        setTopItems(top);
+      } catch (err: any) {
+        setError(err?.message || "Failed to fetch analytics");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchData();
+  }, []);
+
+  const totalDownloads = downloads.length;
+  const avgDaily = 0; // Would need historical data
 
   return (
     <div className="space-y-6">
@@ -127,9 +162,9 @@ export default function AnalyticsPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           { label: "Total Downloads", value: totalDownloads.toLocaleString(), icon: DownloadIcon },
-          { label: "Avg Daily", value: avgDaily.toLocaleString(), icon: Calendar },
-          { label: "Coloring Pages", value: downloadsByType[0].count.toLocaleString(), icon: BarChart3 },
-          { label: "Growth", value: "+23%", icon: TrendingUp },
+          { label: "Avg Daily", value: "—", icon: Calendar },
+          { label: "Content Types", value: downloadsByType.length.toString(), icon: BarChart3 },
+          { label: "Growth", value: "Live", icon: TrendingUp },
         ].map((stat) => (
           <div
             key={stat.label}
@@ -146,91 +181,79 @@ export default function AnalyticsPage() {
         ))}
       </div>
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Downloads Over Time */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-          className="bg-white rounded-xl border border-[#E8E4DC]/50 p-6"
-        >
-          <h3 className="text-sm font-medium text-[#222222] mb-4">Downloads Over Time</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={downloadsOverTime}>
-                <defs>
-                  <linearGradient id="downloadsGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#7A8A6E" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#7A8A6E" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E8E4DC" />
-                <XAxis dataKey="date" tick={{ fontSize: 12, fill: "#888888" }} axisLine={{ stroke: "#E8E4DC" }} />
-                <YAxis tick={{ fontSize: 12, fill: "#888888" }} axisLine={{ stroke: "#E8E4DC" }} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#fff",
-                    border: "1px solid #E8E4DC",
-                    borderRadius: "8px",
-                    fontSize: "12px",
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="downloads"
-                  stroke="#7A8A6E"
-                  strokeWidth={2}
-                  fill="url(#downloadsGradient)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </motion.div>
+      {error && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
+          <p className="font-medium">Data Loading Issue</p>
+          <p className="mt-1">{error}</p>
+        </div>
+      )}
 
-        {/* Downloads by Content Type */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
-          className="bg-white rounded-xl border border-[#E8E4DC]/50 p-6"
-        >
-          <h3 className="text-sm font-medium text-[#222222] mb-4">Downloads by Content Type</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={downloadsByType}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E8E4DC" />
-                <XAxis dataKey="type" tick={{ fontSize: 12, fill: "#888888" }} axisLine={{ stroke: "#E8E4DC" }} />
-                <YAxis tick={{ fontSize: 12, fill: "#888888" }} axisLine={{ stroke: "#E8E4DC" }} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#fff",
-                    border: "1px solid #E8E4DC",
-                    borderRadius: "8px",
-                    fontSize: "12px",
-                  }}
-                />
-                <Bar dataKey="count" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </motion.div>
-      </div>
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 text-[#7A8A6E] animate-spin" />
+        </div>
+      ) : (
+        <>
+          {/* Charts Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Downloads by Content Type */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.1 }}
+              className="bg-white rounded-xl border border-[#E8E4DC]/50 p-6"
+            >
+              <h3 className="text-sm font-medium text-[#222222] mb-4">Downloads by Content Type</h3>
+              <div className="h-64">
+                {downloadsByType.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={downloadsByType}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E8E4DC" />
+                      <XAxis dataKey="type" tick={{ fontSize: 12, fill: "#888888" }} axisLine={{ stroke: "#E8E4DC" }} />
+                      <YAxis tick={{ fontSize: 12, fill: "#888888" }} axisLine={{ stroke: "#E8E4DC" }} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "#fff",
+                          border: "1px solid #E8E4DC",
+                          borderRadius: "8px",
+                          fontSize: "12px",
+                        }}
+                      />
+                      <Bar dataKey="count" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-sm text-[#888888]">
+                    No download data yet
+                  </div>
+                )}
+              </div>
+            </motion.div>
 
-      {/* Top Downloaded Items */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.3 }}
-      >
-        <h3 className="text-sm font-medium text-[#222222] mb-4">Top Downloaded Items</h3>
-        <DataTable
-          data={topItems}
-          columns={topItemsColumns}
-          keyExtractor={(item) => item.id}
-          searchPlaceholder="Search items..."
-        />
-      </motion.div>
+            {/* Top Downloaded Items */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.2 }}
+              className="bg-white rounded-xl border border-[#E8E4DC]/50 p-6"
+            >
+              <h3 className="text-sm font-medium text-[#222222] mb-4">Top Downloaded Items</h3>
+              {topItems.length > 0 ? (
+                <DataTable
+                  data={topItems}
+                  columns={topItemsColumns}
+                  keyExtractor={(item) => item.id}
+                  searchPlaceholder="Search items..."
+                />
+              ) : (
+                <div className="flex items-center justify-center h-48 text-sm text-[#888888]">
+                  No download data yet
+                </div>
+              )}
+            </motion.div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

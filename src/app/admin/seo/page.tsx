@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Zap, CheckCircle, AlertCircle, Clock, Sparkles } from "lucide-react";
+import { Zap, CheckCircle, AlertCircle, Clock, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable, Column } from "@/components/admin/data-table";
+import { supabase } from "@/lib/supabase";
 
 interface SeoItem {
   id: string;
@@ -12,19 +13,6 @@ interface SeoItem {
   title: string;
   seoStatus: "optimized" | "missing" | "pending";
 }
-
-const mockSeoItems: SeoItem[] = [
-  { id: "1", contentType: "Coloring Page", title: "Jesus Blesses the Children", seoStatus: "optimized" },
-  { id: "2", contentType: "Video", title: "Jesus Calms the Storm", seoStatus: "optimized" },
-  { id: "3", contentType: "Wallpaper", title: "Sunset Cross", seoStatus: "missing" },
-  { id: "4", contentType: "Bible Story", title: "The Creation Story", seoStatus: "optimized" },
-  { id: "5", contentType: "Coloring Page", title: "Walking on Water", seoStatus: "pending" },
-  { id: "6", contentType: "Video", title: "The Good Shepherd", seoStatus: "optimized" },
-  { id: "7", contentType: "Wallpaper", title: "Mountain Prayer", seoStatus: "missing" },
-  { id: "8", contentType: "Bible Story", title: "Noah's Ark", seoStatus: "pending" },
-  { id: "9", contentType: "Coloring Page", title: "The Last Supper", seoStatus: "missing" },
-  { id: "10", contentType: "Video", title: "Walking on Water", seoStatus: "optimized" },
-];
 
 const statusColors: Record<string, string> = {
   optimized: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -78,7 +66,7 @@ const columns: Column<SeoItem>[] = [
         variant="ghost"
         size="sm"
         className="h-7 px-2 text-xs text-[#666666] hover:text-[#7A8A6E] gap-1"
-        onClick={() => console.log("Generate SEO for", item.id)}
+        onClick={() => alert("SEO generation feature coming soon.")}
         disabled={item.seoStatus === "optimized"}
       >
         <Sparkles className="w-3 h-3" />
@@ -89,7 +77,74 @@ const columns: Column<SeoItem>[] = [
 ];
 
 export default function SeoPage() {
-  const [seoItems] = useState<SeoItem[]>(mockSeoItems);
+  const [seoItems, setSeoItems] = useState<SeoItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const items: SeoItem[] = [];
+        let idCounter = 1;
+
+        // Fetch videos
+        const { data: videos } = await supabase.from("videos").select("id, title, seo_title, seo_description");
+        (videos || []).forEach((v) => {
+          const hasSeo = v.seo_title && v.seo_description;
+          items.push({
+            id: String(idCounter++),
+            contentType: "Video",
+            title: v.title,
+            seoStatus: hasSeo ? "optimized" : "missing",
+          });
+        });
+
+        // Fetch coloring pages
+        const { data: pages } = await supabase.from("coloring_pages").select("id, title, seo_title, seo_description");
+        (pages || []).forEach((p) => {
+          const hasSeo = p.seo_title && p.seo_description;
+          items.push({
+            id: String(idCounter++),
+            contentType: "Coloring Page",
+            title: p.title,
+            seoStatus: hasSeo ? "optimized" : "missing",
+          });
+        });
+
+        // Fetch wallpapers
+        const { data: wallpapers } = await supabase.from("wallpapers").select("id, title, seo_title, seo_description");
+        (wallpapers || []).forEach((w) => {
+          const hasSeo = w.seo_title && w.seo_description;
+          items.push({
+            id: String(idCounter++),
+            contentType: "Wallpaper",
+            title: w.title,
+            seoStatus: hasSeo ? "optimized" : "missing",
+          });
+        });
+
+        // Fetch bible stories
+        const { data: stories } = await supabase.from("bible_stories").select("id, title, seo_title, seo_description");
+        (stories || []).forEach((s) => {
+          const hasSeo = s.seo_title && s.seo_description;
+          items.push({
+            id: String(idCounter++),
+            contentType: "Bible Story",
+            title: s.title,
+            seoStatus: hasSeo ? "optimized" : "missing",
+          });
+        });
+
+        setSeoItems(items);
+      } catch (err: any) {
+        setError(err?.message || "Failed to fetch SEO data");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchData();
+  }, []);
 
   const optimizedCount = seoItems.filter((i) => i.seoStatus === "optimized").length;
   const missingCount = seoItems.filter((i) => i.seoStatus === "missing").length;
@@ -108,7 +163,10 @@ export default function SeoPage() {
           <h1 className="text-2xl font-medium text-[#222222]">SEO Management</h1>
           <p className="text-sm text-[#666666] mt-1">Optimize and manage SEO for your content</p>
         </div>
-        <Button className="bg-[#7A8A6E] hover:bg-[#6A7A5E] text-white rounded-lg h-10 px-5 text-sm font-medium gap-2">
+        <Button
+          onClick={() => alert("Bulk SEO generation coming soon.")}
+          className="bg-[#7A8A6E] hover:bg-[#6A7A5E] text-white rounded-lg h-10 px-5 text-sm font-medium gap-2"
+        >
           <Zap className="w-4 h-4" />
           Generate All
         </Button>
@@ -136,18 +194,36 @@ export default function SeoPage() {
         ))}
       </div>
 
-      {/* Table */}
-      <DataTable
-        data={seoItems}
-        columns={columns}
-        keyExtractor={(item) => item.id}
-        searchPlaceholder="Search content..."
-        filterOptions={[
-          { label: "Optimized", value: "optimized" },
-          { label: "Missing", value: "missing" },
-          { label: "Pending", value: "pending" },
-        ]}
-      />
+      {error && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
+          <p className="font-medium">Data Loading Issue</p>
+          <p className="mt-1">{error}</p>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 text-[#7A8A6E] animate-spin" />
+        </div>
+      ) : seoItems.length === 0 ? (
+        <div className="bg-white rounded-xl border border-[#E8E4DC]/50 p-12 text-center">
+          <Zap className="w-12 h-12 text-[#E8E4DC] mx-auto mb-4" />
+          <h3 className="text-base font-medium text-[#222222]">No content yet</h3>
+          <p className="text-sm text-[#888888] mt-1">Add content to see SEO status here.</p>
+        </div>
+      ) : (
+        <DataTable
+          data={seoItems}
+          columns={columns}
+          keyExtractor={(item) => item.id}
+          searchPlaceholder="Search content..."
+          filterOptions={[
+            { label: "Optimized", value: "optimized" },
+            { label: "Missing", value: "missing" },
+            { label: "Pending", value: "pending" },
+          ]}
+        />
+      )}
     </div>
   );
 }

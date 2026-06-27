@@ -1,118 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Download, Shield, Crown, UserX, Calendar, Clock } from "lucide-react";
+import { Download, Shield, Crown, UserX, Calendar, Clock, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable, Column } from "@/components/admin/data-table";
 import { User } from "@/lib/supabase";
-
-const mockUsers: User[] = [
-  {
-    id: "1",
-    email: "sarah.johnson@email.com",
-    full_name: "Sarah Johnson",
-    avatar_url: "/images/avatars/sarah.jpg",
-    role: "admin",
-    membership: "premium",
-    downloads_today: 5,
-    downloads_reset_at: "2024-03-10T00:00:00Z",
-    created_at: "2023-12-01T10:00:00Z",
-    last_login: "2024-03-10T08:30:00Z",
-    is_banned: false,
-  },
-  {
-    id: "2",
-    email: "michael.chen@email.com",
-    full_name: "Michael Chen",
-    avatar_url: "/images/avatars/michael.jpg",
-    role: "user",
-    membership: "premium",
-    downloads_today: 3,
-    downloads_reset_at: "2024-03-10T00:00:00Z",
-    created_at: "2024-01-15T10:00:00Z",
-    last_login: "2024-03-09T14:20:00Z",
-    is_banned: false,
-  },
-  {
-    id: "3",
-    email: "emma.davis@email.com",
-    full_name: "Emma Davis",
-    avatar_url: null,
-    role: "user",
-    membership: "free",
-    downloads_today: 1,
-    downloads_reset_at: "2024-03-10T00:00:00Z",
-    created_at: "2024-02-01T10:00:00Z",
-    last_login: "2024-03-08T09:15:00Z",
-    is_banned: false,
-  },
-  {
-    id: "4",
-    email: "james.wilson@email.com",
-    full_name: "James Wilson",
-    avatar_url: "/images/avatars/james.jpg",
-    role: "editor",
-    membership: "premium",
-    downloads_today: 7,
-    downloads_reset_at: "2024-03-10T00:00:00Z",
-    created_at: "2023-11-20T10:00:00Z",
-    last_login: "2024-03-10T10:45:00Z",
-    is_banned: false,
-  },
-  {
-    id: "5",
-    email: "olivia.brown@email.com",
-    full_name: "Olivia Brown",
-    avatar_url: null,
-    role: "user",
-    membership: "free",
-    downloads_today: 0,
-    downloads_reset_at: "2024-03-10T00:00:00Z",
-    created_at: "2024-02-20T10:00:00Z",
-    last_login: "2024-03-05T16:30:00Z",
-    is_banned: true,
-  },
-  {
-    id: "6",
-    email: "william.taylor@email.com",
-    full_name: "William Taylor",
-    avatar_url: "/images/avatars/william.jpg",
-    role: "user",
-    membership: "premium",
-    downloads_today: 4,
-    downloads_reset_at: "2024-03-10T00:00:00Z",
-    created_at: "2024-01-05T10:00:00Z",
-    last_login: "2024-03-10T07:00:00Z",
-    is_banned: false,
-  },
-  {
-    id: "7",
-    email: "sophia.martinez@email.com",
-    full_name: "Sophia Martinez",
-    avatar_url: null,
-    role: "user",
-    membership: "free",
-    downloads_today: 2,
-    downloads_reset_at: "2024-03-10T00:00:00Z",
-    created_at: "2024-03-01T10:00:00Z",
-    last_login: "2024-03-10T11:00:00Z",
-    is_banned: false,
-  },
-  {
-    id: "8",
-    email: "benjamin.lee@email.com",
-    full_name: "Benjamin Lee",
-    avatar_url: "/images/avatars/benjamin.jpg",
-    role: "editor",
-    membership: "free",
-    downloads_today: 1,
-    downloads_reset_at: "2024-03-10T00:00:00Z",
-    created_at: "2024-02-10T10:00:00Z",
-    last_login: "2024-03-09T20:00:00Z",
-    is_banned: false,
-  },
-];
+import { supabase } from "@/lib/supabase";
 
 const roleColors: Record<string, string> = {
   admin: "bg-red-50 text-red-700 border-red-200",
@@ -214,7 +108,32 @@ const columns: Column<User>[] = [
 ];
 
 export default function UsersPage() {
-  const [users] = useState<User[]>(mockUsers);
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchUsers() {
+      try {
+        const { data, error } = await supabase
+          .from("users")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          setError(error.message);
+        } else {
+          setUsers(data || []);
+        }
+      } catch (err: any) {
+        setError(err?.message || "Failed to fetch users");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchUsers();
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -261,22 +180,40 @@ export default function UsersPage() {
         ))}
       </div>
 
-      {/* Table */}
-      <DataTable
-        data={users}
-        columns={columns}
-        keyExtractor={(u) => u.id}
-        searchPlaceholder="Search users..."
-        filterOptions={[
-          { label: "Admin", value: "admin" },
-          { label: "Editor", value: "editor" },
-          { label: "User", value: "user" },
-          { label: "Premium", value: "premium" },
-          { label: "Free", value: "free" },
-        ]}
-        onEdit={(user) => console.log("Edit", user.id)}
-        onDelete={(user) => console.log("Delete", user.id)}
-      />
+      {error && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
+          <p className="font-medium">Data Loading Issue</p>
+          <p className="mt-1">{error}</p>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 text-[#7A8A6E] animate-spin" />
+        </div>
+      ) : users.length === 0 ? (
+        <div className="bg-white rounded-xl border border-[#E8E4DC]/50 p-12 text-center">
+          <Shield className="w-12 h-12 text-[#E8E4DC] mx-auto mb-4" />
+          <h3 className="text-base font-medium text-[#222222]">No users yet</h3>
+          <p className="text-sm text-[#888888] mt-1">Users will appear here when they sign up on your website.</p>
+        </div>
+      ) : (
+        <DataTable
+          data={users}
+          columns={columns}
+          keyExtractor={(u) => u.id}
+          searchPlaceholder="Search users..."
+          filterOptions={[
+            { label: "Admin", value: "admin" },
+            { label: "Editor", value: "editor" },
+            { label: "User", value: "user" },
+            { label: "Premium", value: "premium" },
+            { label: "Free", value: "free" },
+          ]}
+          onEdit={(user) => console.log("Edit", user.id)}
+          onDelete={(user) => console.log("Delete", user.id)}
+        />
+      )}
     </div>
   );
 }

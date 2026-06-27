@@ -26,13 +26,14 @@ export function AdminHeader() {
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* New Button */}
-        <Link href="/admin/videos/new">
-          <Button className="bg-[#7A8A6E] hover:bg-[#6A7A5E] text-white rounded-lg h-9 px-4 text-sm font-medium gap-1.5">
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">New</span>
-          </Button>
-        </Link>
+        {/* New Button - opens content form modal on current page */}
+        <Button
+          onClick={() => alert("Add new content via the 'Add' buttons on each page (Videos, Coloring Pages, etc.)")}
+          className="bg-[#7A8A6E] hover:bg-[#6A7A5E] text-white rounded-lg h-9 px-4 text-sm font-medium gap-1.5"
+        >
+          <Plus className="w-4 h-4" />
+          <span className="hidden sm:inline">New</span>
+        </Button>
 
         {/* Notifications */}
         <button className="relative w-9 h-9 rounded-lg hover:bg-[#F5F2EC] flex items-center justify-center text-[#666666] transition-colors">
