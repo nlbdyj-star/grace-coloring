@@ -8,6 +8,7 @@ import { Heart, Download, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { Loader2 } from "lucide-react";
+import { useDownload } from "@/lib/download-context";
 
 interface ColoringPageItem {
   id: string;
@@ -24,6 +25,7 @@ export function LatestColoringPages() {
   const [pages, setPages] = useState<ColoringPageItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { triggerDownload } = useDownload();
 
   useEffect(() => {
     supabase
@@ -166,6 +168,17 @@ export function LatestColoringPages() {
                             variant="ghost"
                             size="icon"
                             className="w-8 h-8 rounded-full bg-white/90 hover:bg-white text-[#222222] backdrop-blur-sm"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              triggerDownload({
+                                contentType: "coloring",
+                                contentId: page.id,
+                                contentTitle: page.title,
+                                downloadUrl: page.line_art_image,
+                                imagePreview: page.line_art_image,
+                              });
+                            }}
                           >
                             <Download className="w-3.5 h-3.5" />
                           </Button>

@@ -8,11 +8,13 @@ import { supabase } from "@/lib/supabase";
 import { motion } from "framer-motion";
 import { Loader2, Download, ImageIcon } from "lucide-react";
 import type { Wallpaper } from "@/lib/supabase";
+import { useDownload } from "@/lib/download-context";
 
 export default function WallpapersPage() {
   const [wallpapers, setWallpapers] = useState<Wallpaper[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { triggerDownload } = useDownload();
 
   useEffect(() => {
     supabase
@@ -95,16 +97,21 @@ export default function WallpapersPage() {
                         <ImageIcon className="w-8 h-8 text-[#888888]" />
                       </div>
                     )}
-                    <a
-                      href={wallpaper.image_original}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      download
-                      className="absolute bottom-3 right-3 w-9 h-9 rounded-full bg-white/90 hover:bg-white text-[#222222] backdrop-blur-sm flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                    <button
+                      onClick={() => {
+                        triggerDownload({
+                          contentType: "wallpaper",
+                          contentId: wallpaper.id,
+                          contentTitle: wallpaper.title,
+                          downloadUrl: wallpaper.image_original,
+                          imagePreview: wallpaper.image_original,
+                        });
+                      }}
+                      className="absolute bottom-3 right-3 w-9 h-9 rounded-full bg-white/90 hover:bg-white text-[#222222] backdrop-blur-sm flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer"
                       aria-label={`Download ${wallpaper.title}`}
                     >
                       <Download className="w-4 h-4" />
-                    </a>
+                    </button>
                   </div>
                   <div className="p-5">
                     <h3 className="font-medium text-[#222222]">

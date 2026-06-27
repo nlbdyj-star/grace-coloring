@@ -8,11 +8,13 @@ import { supabase } from "@/lib/supabase";
 import { motion } from "framer-motion";
 import { Loader2, Download, Palette } from "lucide-react";
 import type { ColoringPage } from "@/lib/supabase";
+import { useDownload } from "@/lib/download-context";
 
 export default function ColoringPagesPage() {
   const [pages, setPages] = useState<ColoringPage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { triggerDownload } = useDownload();
 
   useEffect(() => {
     supabase
@@ -96,15 +98,21 @@ export default function ColoringPagesPage() {
                       </div>
                     )}
                     {page.pdf_file && (
-                      <a
-                        href={page.pdf_file}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="absolute bottom-3 right-3 w-9 h-9 rounded-full bg-white/90 hover:bg-white text-[#222222] backdrop-blur-sm flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                      <button
+                        onClick={() => {
+                          triggerDownload({
+                            contentType: "coloring",
+                            contentId: page.id,
+                            contentTitle: page.title,
+                            downloadUrl: page.pdf_file || page.line_art_image || "",
+                            imagePreview: page.line_art_image,
+                          });
+                        }}
+                        className="absolute bottom-3 right-3 w-9 h-9 rounded-full bg-white/90 hover:bg-white text-[#222222] backdrop-blur-sm flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer"
                         aria-label={`Download ${page.title}`}
                       >
                         <Download className="w-4 h-4" />
-                      </a>
+                      </button>
                     )}
                   </div>
                   <div className="p-4">

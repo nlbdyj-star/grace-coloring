@@ -30,14 +30,32 @@ export default function VideosPage() {
       });
   }, []);
 
+  // 将 YouTube URL 转换为 youtube-nocookie.com 嵌入 URL，避免 Referer 检查被拒绝
   const getEmbedUrl = (url: string | null) => {
     if (!url) return "";
+
+    // https://www.youtube.com/watch?v=xxxxx → https://www.youtube-nocookie.com/embed/xxxxx
     if (url.includes("youtube.com/watch?v=")) {
-      return url.replace("youtube.com/watch?v=", "youtube.com/embed/");
+      const videoId = url.split("v=")[1]?.split("&")[0];
+      return videoId ? `https://www.youtube-nocookie.com/embed/${videoId}` : url;
     }
+
+    // https://youtu.be/xxxxx → https://www.youtube-nocookie.com/embed/xxxxx
     if (url.includes("youtu.be/")) {
-      return url.replace("youtu.be/", "youtube.com/embed/");
+      const videoId = url.split("youtu.be/")[1]?.split("?")[0];
+      return videoId ? `https://www.youtube-nocookie.com/embed/${videoId}` : url;
     }
+
+    // 已经是 embed URL，替换为 youtube-nocookie.com
+    if (url.includes("youtube.com/embed/")) {
+      return url.replace("youtube.com/embed/", "www.youtube-nocookie.com/embed/");
+    }
+
+    // 已经是 youtube-nocookie.com/embed/，直接返回
+    if (url.includes("youtube-nocookie.com/embed/")) {
+      return url;
+    }
+
     return url;
   };
 
@@ -96,8 +114,10 @@ export default function VideosPage() {
                         src={getEmbedUrl(video.youtube_url)}
                         title={video.title}
                         className="w-full h-full"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen
                         loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-white/50">
