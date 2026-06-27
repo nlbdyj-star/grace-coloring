@@ -8,6 +8,8 @@ import { DataTable, Column } from "@/components/admin/data-table";
 import { Category } from "@/lib/supabase";
 import { supabase } from "@/lib/supabase";
 import UploadModal from "@/components/admin/upload-modal";
+import EditModal from "@/components/admin/edit-modal";
+import DeleteDialog from "@/components/admin/delete-dialog";
 
 const typeColors: Record<string, string> = {
   all: "bg-[#7A8A6E]/10 text-[#7A8A6E] border-[#7A8A6E]/20",
@@ -65,6 +67,8 @@ export default function CategoriesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [editItem, setEditItem] = useState<Category | null>(null);
+  const [deleteItem, setDeleteItem] = useState<Category | null>(null);
 
   // 提取 fetchCategories 到组件级别，便于 UploadModal 成功后刷新
   const fetchCategories = useCallback(async () => {
@@ -142,8 +146,8 @@ export default function CategoriesPage() {
             { label: "Wallpaper", value: "wallpaper" },
             { label: "Story", value: "story" },
           ]}
-          onEdit={(category) => console.log("Edit", category.id)}
-          onDelete={(category) => console.log("Delete", category.id)}
+          onEdit={(category) => setEditItem(category)}
+          onDelete={(category) => setDeleteItem(category)}
         />
       )}
       <UploadModal
@@ -152,6 +156,31 @@ export default function CategoriesPage() {
         type="category"
         onSuccess={() => {
           setShowModal(false);
+          fetchCategories();
+        }}
+      />
+      {editItem && (
+        <EditModal
+          open={!!editItem}
+          onClose={() => setEditItem(null)}
+          type="category"
+          initialData={editItem}
+          onSuccess={() => {
+            setEditItem(null);
+            fetchCategories();
+          }}
+        />
+      )}
+      <DeleteDialog
+        open={!!deleteItem}
+        onClose={() => setDeleteItem(null)}
+        title="Delete Category"
+        itemName={deleteItem?.name || ""}
+        onConfirm={async () => {
+          if (!deleteItem) return;
+          const { error } = await supabase.from("categories").delete().eq("id", deleteItem.id);
+          if (error) throw new Error(error.message);
+          setDeleteItem(null);
           fetchCategories();
         }}
       />

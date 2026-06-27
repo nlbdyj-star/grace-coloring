@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Download, Shield, Crown, UserX, Calendar, Clock, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable, Column } from "@/components/admin/data-table";
 import { User } from "@/lib/supabase";
 import { supabase } from "@/lib/supabase";
+import EditModal from "@/components/admin/edit-modal";
 
 const roleColors: Record<string, string> = {
   admin: "bg-red-50 text-red-700 border-red-200",
@@ -111,29 +112,30 @@ export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [editItem, setEditItem] = useState<User | null>(null);
+
+  const fetchUsers = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        setError(error.message);
+      } else {
+        setUsers(data || []);
+      }
+    } catch (err: any) {
+      setError(err?.message || "Failed to fetch users");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    async function fetchUsers() {
-      try {
-        const { data, error } = await supabase
-          .from("users")
-          .select("*")
-          .order("created_at", { ascending: false });
-
-        if (error) {
-          setError(error.message);
-        } else {
-          setUsers(data || []);
-        }
-      } catch (err: any) {
-        setError(err?.message || "Failed to fetch users");
-      } finally {
-        setLoading(false);
-      }
-    }
-
     fetchUsers();
-  }, []);
+  }, [fetchUsers]);
 
   return (
     <div className="space-y-6">
@@ -210,8 +212,19 @@ export default function UsersPage() {
             { label: "Premium", value: "premium" },
             { label: "Free", value: "free" },
           ]}
-          onEdit={(user) => console.log("Edit", user.id)}
-          onDelete={(user) => console.log("Delete", user.id)}
+          onEdit={(user) => setEditItem(user)}
+        />
+      )}
+      {editItem && (
+        <EditModal
+          open={!!editItem}
+          onClose={() => setEditItem(null)}
+          type="user"
+          initialData={editItem}
+          onSuccess={() => {
+            setEditItem(null);
+            fetchUsers();
+          }}
         />
       )}
     </div>

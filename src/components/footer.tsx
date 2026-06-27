@@ -5,16 +5,16 @@ import { motion } from "framer-motion";
 import { Play, Camera, MessageCircle } from "lucide-react";
 
 const exploreLinks = [
-  { label: "Coloring Pages", href: "#coloring-pages" },
-  { label: "Wallpapers", href: "#wallpapers" },
-  { label: "Videos", href: "#videos" },
-  { label: "Bible Stories", href: "#bible-stories" },
+  { label: "Coloring Pages", href: "/coloring-pages" },
+  { label: "Wallpapers", href: "/wallpapers" },
+  { label: "Videos", href: "/videos" },
+  { label: "Bible Stories", href: "/bible-stories" },
 ];
 
 const aboutLinks = [
-  { label: "About Us", href: "#" },
-  { label: "Our Mission", href: "#" },
-  { label: "Contact", href: "#" },
+  { label: "About Us", href: "/about" },
+  { label: "Our Mission", href: "/about" },
+  { label: "Contact", href: "/about" },
 ];
 
 const supportLinks = [

@@ -8,6 +8,8 @@ import { DataTable, Column } from "@/components/admin/data-table";
 import { Wallpaper } from "@/lib/supabase";
 import { supabase } from "@/lib/supabase";
 import UploadModal from "@/components/admin/upload-modal";
+import EditModal from "@/components/admin/edit-modal";
+import DeleteDialog from "@/components/admin/delete-dialog";
 
 const statusColors: Record<string, string> = {
   published: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -96,6 +98,8 @@ export default function WallpapersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [editItem, setEditItem] = useState<Wallpaper | null>(null);
+  const [deleteItem, setDeleteItem] = useState<Wallpaper | null>(null);
 
   // 提取 fetchWallpapers 到组件级别，便于 UploadModal 成功后刷新
   const fetchWallpapers = useCallback(async () => {
@@ -189,8 +193,8 @@ export default function WallpapersPage() {
             { label: "Draft", value: "draft" },
             { label: "Archived", value: "archived" },
           ]}
-          onEdit={(wallpaper) => console.log("Edit", wallpaper.id)}
-          onDelete={(wallpaper) => console.log("Delete", wallpaper.id)}
+          onEdit={(wallpaper) => setEditItem(wallpaper)}
+          onDelete={(wallpaper) => setDeleteItem(wallpaper)}
         />
       )}
       <UploadModal
@@ -199,6 +203,31 @@ export default function WallpapersPage() {
         type="wallpaper"
         onSuccess={() => {
           setShowModal(false);
+          fetchWallpapers();
+        }}
+      />
+      {editItem && (
+        <EditModal
+          open={!!editItem}
+          onClose={() => setEditItem(null)}
+          type="wallpaper"
+          initialData={editItem}
+          onSuccess={() => {
+            setEditItem(null);
+            fetchWallpapers();
+          }}
+        />
+      )}
+      <DeleteDialog
+        open={!!deleteItem}
+        onClose={() => setDeleteItem(null)}
+        title="Delete Wallpaper"
+        itemName={deleteItem?.title || ""}
+        onConfirm={async () => {
+          if (!deleteItem) return;
+          const { error } = await supabase.from("wallpapers").delete().eq("id", deleteItem.id);
+          if (error) throw new Error(error.message);
+          setDeleteItem(null);
           fetchWallpapers();
         }}
       />

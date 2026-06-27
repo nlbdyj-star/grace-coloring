@@ -8,6 +8,8 @@ import { DataTable, Column } from "@/components/admin/data-table";
 import { BibleStory } from "@/lib/supabase";
 import { supabase } from "@/lib/supabase";
 import UploadModal from "@/components/admin/upload-modal";
+import EditModal from "@/components/admin/edit-modal";
+import DeleteDialog from "@/components/admin/delete-dialog";
 
 const statusColors: Record<string, string> = {
   published: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -96,6 +98,8 @@ export default function BibleStoriesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [editItem, setEditItem] = useState<BibleStory | null>(null);
+  const [deleteItem, setDeleteItem] = useState<BibleStory | null>(null);
 
   // 提取 fetchStories 到组件级别，便于 UploadModal 成功后刷新
   const fetchStories = useCallback(async () => {
@@ -189,8 +193,8 @@ export default function BibleStoriesPage() {
             { label: "Draft", value: "draft" },
             { label: "Archived", value: "archived" },
           ]}
-          onEdit={(story) => console.log("Edit", story.id)}
-          onDelete={(story) => console.log("Delete", story.id)}
+          onEdit={(story) => setEditItem(story)}
+          onDelete={(story) => setDeleteItem(story)}
         />
       )}
       <UploadModal
@@ -199,6 +203,31 @@ export default function BibleStoriesPage() {
         type="bible-story"
         onSuccess={() => {
           setShowModal(false);
+          fetchStories();
+        }}
+      />
+      {editItem && (
+        <EditModal
+          open={!!editItem}
+          onClose={() => setEditItem(null)}
+          type="bible-story"
+          initialData={editItem}
+          onSuccess={() => {
+            setEditItem(null);
+            fetchStories();
+          }}
+        />
+      )}
+      <DeleteDialog
+        open={!!deleteItem}
+        onClose={() => setDeleteItem(null)}
+        title="Delete Bible Story"
+        itemName={deleteItem?.title || ""}
+        onConfirm={async () => {
+          if (!deleteItem) return;
+          const { error } = await supabase.from("bible_stories").delete().eq("id", deleteItem.id);
+          if (error) throw new Error(error.message);
+          setDeleteItem(null);
           fetchStories();
         }}
       />

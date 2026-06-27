@@ -113,9 +113,9 @@ export const bibleVerse = {
 };
 
 export const navLinks = [
-  { label: "Videos", href: "#videos" },
-  { label: "Coloring Pages", href: "#coloring-pages" },
-  { label: "Wallpapers", href: "#wallpapers" },
-  { label: "Bible Stories", href: "#bible-stories" },
-  { label: "About", href: "#about" },
+  { label: "Videos", href: "/videos" },
+  { label: "Coloring Pages", href: "/coloring-pages" },
+  { label: "Wallpapers", href: "/wallpapers" },
+  { label: "Bible Stories", href: "/bible-stories" },
+  { label: "About", href: "/about" },
 ];

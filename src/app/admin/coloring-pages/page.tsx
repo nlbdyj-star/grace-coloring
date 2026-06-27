@@ -8,6 +8,8 @@ import { DataTable, Column } from "@/components/admin/data-table";
 import { ColoringPage } from "@/lib/supabase";
 import { supabase } from "@/lib/supabase";
 import UploadModal from "@/components/admin/upload-modal";
+import EditModal from "@/components/admin/edit-modal";
+import DeleteDialog from "@/components/admin/delete-dialog";
 
 const difficultyColors: Record<string, string> = {
   easy: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -116,6 +118,8 @@ export default function ColoringPagesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [editItem, setEditItem] = useState<ColoringPage | null>(null);
+  const [deleteItem, setDeleteItem] = useState<ColoringPage | null>(null);
 
   // 提取 fetchPages 到组件级别，便于 UploadModal 成功后刷新
   const fetchPages = useCallback(async () => {
@@ -211,8 +215,8 @@ export default function ColoringPagesPage() {
             { label: "Medium", value: "medium" },
             { label: "Hard", value: "hard" },
           ]}
-          onEdit={(page) => console.log("Edit", page.id)}
-          onDelete={(page) => console.log("Delete", page.id)}
+          onEdit={(page) => setEditItem(page)}
+          onDelete={(page) => setDeleteItem(page)}
         />
       )}
       <UploadModal
@@ -221,6 +225,31 @@ export default function ColoringPagesPage() {
         type="coloring"
         onSuccess={() => {
           setShowModal(false);
+          fetchPages();
+        }}
+      />
+      {editItem && (
+        <EditModal
+          open={!!editItem}
+          onClose={() => setEditItem(null)}
+          type="coloring"
+          initialData={editItem}
+          onSuccess={() => {
+            setEditItem(null);
+            fetchPages();
+          }}
+        />
+      )}
+      <DeleteDialog
+        open={!!deleteItem}
+        onClose={() => setDeleteItem(null)}
+        title="Delete Coloring Page"
+        itemName={deleteItem?.title || ""}
+        onConfirm={async () => {
+          if (!deleteItem) return;
+          const { error } = await supabase.from("coloring_pages").delete().eq("id", deleteItem.id);
+          if (error) throw new Error(error.message);
+          setDeleteItem(null);
           fetchPages();
         }}
       />

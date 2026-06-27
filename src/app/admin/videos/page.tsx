@@ -8,6 +8,8 @@ import { DataTable, Column } from "@/components/admin/data-table";
 import { Video } from "@/lib/supabase";
 import { supabase } from "@/lib/supabase";
 import UploadModal from "@/components/admin/upload-modal";
+import EditModal from "@/components/admin/edit-modal";
+import DeleteDialog from "@/components/admin/delete-dialog";
 
 const statusColors: Record<string, string> = {
   published: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -95,6 +97,8 @@ export default function VideosPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [editItem, setEditItem] = useState<Video | null>(null);
+  const [deleteItem, setDeleteItem] = useState<Video | null>(null);
 
   // 提取 fetchVideos 到组件级别，便于 UploadModal 成功后刷新
   const fetchVideos = useCallback(async () => {
@@ -188,8 +192,8 @@ export default function VideosPage() {
             { label: "Draft", value: "draft" },
             { label: "Archived", value: "archived" },
           ]}
-          onEdit={(video) => console.log("Edit", video.id)}
-          onDelete={(video) => console.log("Delete", video.id)}
+          onEdit={(video) => setEditItem(video)}
+          onDelete={(video) => setDeleteItem(video)}
         />
       )}
       <UploadModal
@@ -198,6 +202,31 @@ export default function VideosPage() {
         type="video"
         onSuccess={() => {
           setShowModal(false);
+          fetchVideos();
+        }}
+      />
+      {editItem && (
+        <EditModal
+          open={!!editItem}
+          onClose={() => setEditItem(null)}
+          type="video"
+          initialData={editItem}
+          onSuccess={() => {
+            setEditItem(null);
+            fetchVideos();
+          }}
+        />
+      )}
+      <DeleteDialog
+        open={!!deleteItem}
+        onClose={() => setDeleteItem(null)}
+        title="Delete Video"
+        itemName={deleteItem?.title || ""}
+        onConfirm={async () => {
+          if (!deleteItem) return;
+          const { error } = await supabase.from("videos").delete().eq("id", deleteItem.id);
+          if (error) throw new Error(error.message);
+          setDeleteItem(null);
           fetchVideos();
         }}
       />
