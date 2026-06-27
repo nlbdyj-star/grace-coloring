@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Plus, Download, Heart, Eye, Calendar, Palette, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable, Column } from "@/components/admin/data-table";
 import { ColoringPage } from "@/lib/supabase";
 import { supabase } from "@/lib/supabase";
+import UploadModal from "@/components/admin/upload-modal";
 
 const difficultyColors: Record<string, string> = {
   easy: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -114,29 +115,31 @@ export default function ColoringPagesPage() {
   const [pages, setPages] = useState<ColoringPage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
+
+  // 提取 fetchPages 到组件级别，便于 UploadModal 成功后刷新
+  const fetchPages = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from("coloring_pages")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        setError(error.message);
+      } else {
+        setPages(data || []);
+      }
+    } catch (err: any) {
+      setError(err?.message || "Failed to fetch coloring pages");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    async function fetchPages() {
-      try {
-        const { data, error } = await supabase
-          .from("coloring_pages")
-          .select("*")
-          .order("created_at", { ascending: false });
-
-        if (error) {
-          setError(error.message);
-        } else {
-          setPages(data || []);
-        }
-      } catch (err: any) {
-        setError(err?.message || "Failed to fetch coloring pages");
-      } finally {
-        setLoading(false);
-      }
-    }
-
     fetchPages();
-  }, []);
+  }, [fetchPages]);
 
   return (
     <div className="space-y-6">
@@ -152,7 +155,7 @@ export default function ColoringPagesPage() {
           <p className="text-sm text-[#666666] mt-1">Manage your coloring page collection</p>
         </div>
         <Button
-          onClick={() => alert("Add coloring page feature coming soon. Please add pages directly in Supabase for now.")}
+          onClick={() => setShowModal(true)}
           className="bg-[#7A8A6E] hover:bg-[#6A7A5E] text-white rounded-lg h-10 px-5 text-sm font-medium gap-2"
         >
           <Plus className="w-4 h-4" />
@@ -212,6 +215,15 @@ export default function ColoringPagesPage() {
           onDelete={(page) => console.log("Delete", page.id)}
         />
       )}
+      <UploadModal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        type="coloring"
+        onSuccess={() => {
+          setShowModal(false);
+          fetchPages();
+        }}
+      />
     </div>
   );
 }

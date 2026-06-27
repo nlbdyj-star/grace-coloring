@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Plus, Download, Heart, Eye, Calendar, ImageIcon, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable, Column } from "@/components/admin/data-table";
 import { Wallpaper } from "@/lib/supabase";
 import { supabase } from "@/lib/supabase";
+import UploadModal from "@/components/admin/upload-modal";
 
 const statusColors: Record<string, string> = {
   published: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -94,29 +95,31 @@ export default function WallpapersPage() {
   const [wallpapers, setWallpapers] = useState<Wallpaper[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
+
+  // 提取 fetchWallpapers 到组件级别，便于 UploadModal 成功后刷新
+  const fetchWallpapers = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from("wallpapers")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        setError(error.message);
+      } else {
+        setWallpapers(data || []);
+      }
+    } catch (err: any) {
+      setError(err?.message || "Failed to fetch wallpapers");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    async function fetchWallpapers() {
-      try {
-        const { data, error } = await supabase
-          .from("wallpapers")
-          .select("*")
-          .order("created_at", { ascending: false });
-
-        if (error) {
-          setError(error.message);
-        } else {
-          setWallpapers(data || []);
-        }
-      } catch (err: any) {
-        setError(err?.message || "Failed to fetch wallpapers");
-      } finally {
-        setLoading(false);
-      }
-    }
-
     fetchWallpapers();
-  }, []);
+  }, [fetchWallpapers]);
 
   return (
     <div className="space-y-6">
@@ -132,7 +135,7 @@ export default function WallpapersPage() {
           <p className="text-sm text-[#666666] mt-1">Manage your wallpaper collection</p>
         </div>
         <Button
-          onClick={() => alert("Add wallpaper feature coming soon. Please add wallpapers directly in Supabase for now.")}
+          onClick={() => setShowModal(true)}
           className="bg-[#7A8A6E] hover:bg-[#6A7A5E] text-white rounded-lg h-10 px-5 text-sm font-medium gap-2"
         >
           <Plus className="w-4 h-4" />
@@ -190,6 +193,15 @@ export default function WallpapersPage() {
           onDelete={(wallpaper) => console.log("Delete", wallpaper.id)}
         />
       )}
+      <UploadModal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        type="wallpaper"
+        onSuccess={() => {
+          setShowModal(false);
+          fetchWallpapers();
+        }}
+      />
     </div>
   );
 }

@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Plus, Tag, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable, Column } from "@/components/admin/data-table";
 import { Category } from "@/lib/supabase";
 import { supabase } from "@/lib/supabase";
+import UploadModal from "@/components/admin/upload-modal";
 
 const typeColors: Record<string, string> = {
   all: "bg-[#7A8A6E]/10 text-[#7A8A6E] border-[#7A8A6E]/20",
@@ -63,29 +64,31 @@ export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
+
+  // 提取 fetchCategories 到组件级别，便于 UploadModal 成功后刷新
+  const fetchCategories = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from("categories")
+        .select("*")
+        .order("sort_order", { ascending: true });
+
+      if (error) {
+        setError(error.message);
+      } else {
+        setCategories(data || []);
+      }
+    } catch (err: any) {
+      setError(err?.message || "Failed to fetch categories");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    async function fetchCategories() {
-      try {
-        const { data, error } = await supabase
-          .from("categories")
-          .select("*")
-          .order("sort_order", { ascending: true });
-
-        if (error) {
-          setError(error.message);
-        } else {
-          setCategories(data || []);
-        }
-      } catch (err: any) {
-        setError(err?.message || "Failed to fetch categories");
-      } finally {
-        setLoading(false);
-      }
-    }
-
     fetchCategories();
-  }, []);
+  }, [fetchCategories]);
 
   return (
     <div className="space-y-6">
@@ -101,7 +104,7 @@ export default function CategoriesPage() {
           <p className="text-sm text-[#666666] mt-1">Manage content categories</p>
         </div>
         <Button
-          onClick={() => alert("Add category feature coming soon. Please add categories directly in Supabase for now.")}
+          onClick={() => setShowModal(true)}
           className="bg-[#7A8A6E] hover:bg-[#6A7A5E] text-white rounded-lg h-10 px-5 text-sm font-medium gap-2"
         >
           <Plus className="w-4 h-4" />
@@ -143,6 +146,15 @@ export default function CategoriesPage() {
           onDelete={(category) => console.log("Delete", category.id)}
         />
       )}
+      <UploadModal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        type="category"
+        onSuccess={() => {
+          setShowModal(false);
+          fetchCategories();
+        }}
+      />
     </div>
   );
 }

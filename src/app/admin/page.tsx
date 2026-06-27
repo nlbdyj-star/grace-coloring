@@ -8,7 +8,6 @@ import {
   Video,
   Palette,
   Image,
-  BookOpen,
   TrendingUp,
   ArrowUpRight,
   Loader2,
@@ -43,38 +42,15 @@ interface TopContentItem {
   count: number;
 }
 
-const chartData = [
-  { date: "May 16", users: 320, downloads: 1200, pageViews: 4500 },
-  { date: "May 17", users: 380, downloads: 1450, pageViews: 5200 },
-  { date: "May 18", users: 410, downloads: 1380, pageViews: 4800 },
-  { date: "May 19", users: 450, downloads: 1620, pageViews: 6100 },
-  { date: "May 20", users: 390, downloads: 1500, pageViews: 5500 },
-  { date: "May 21", users: 480, downloads: 1800, pageViews: 6800 },
-  { date: "May 22", users: 520, downloads: 2100, pageViews: 7200 },
-  { date: "May 23", users: 490, downloads: 1950, pageViews: 6900 },
-  { date: "May 24", users: 560, downloads: 2300, pageViews: 8100 },
-  { date: "May 25", users: 610, downloads: 2500, pageViews: 8900 },
-  { date: "May 26", users: 580, downloads: 2400, pageViews: 8500 },
-  { date: "May 27", users: 650, downloads: 2800, pageViews: 9200 },
-  { date: "May 28", users: 720, downloads: 3100, pageViews: 10500 },
-  { date: "May 29", users: 680, downloads: 2900, pageViews: 9800 },
-  { date: "May 30", users: 750, downloads: 3300, pageViews: 11200 },
-  { date: "May 31", users: 810, downloads: 3600, pageViews: 12500 },
-  { date: "Jun 1", users: 780, downloads: 3400, pageViews: 11800 },
-  { date: "Jun 2", users: 850, downloads: 3800, pageViews: 13200 },
-  { date: "Jun 3", users: 920, downloads: 4100, pageViews: 14500 },
-  { date: "Jun 4", users: 880, downloads: 3900, pageViews: 13800 },
-  { date: "Jun 5", users: 950, downloads: 4300, pageViews: 15200 },
-  { date: "Jun 6", users: 1020, downloads: 4600, pageViews: 16800 },
-  { date: "Jun 7", users: 980, downloads: 4400, pageViews: 15900 },
-  { date: "Jun 8", users: 1050, downloads: 4800, pageViews: 17500 },
-  { date: "Jun 9", users: 1120, downloads: 5100, pageViews: 18900 },
-  { date: "Jun 10", users: 1080, downloads: 4900, pageViews: 18200 },
-  { date: "Jun 11", users: 1150, downloads: 5300, pageViews: 19800 },
-  { date: "Jun 12", users: 1220, downloads: 5600, pageViews: 21500 },
-  { date: "Jun 13", users: 1180, downloads: 5400, pageViews: 20800 },
-  { date: "Jun 14", users: 1250, downloads: 5800, pageViews: 22500 },
-];
+interface ActivityDataPoint {
+  date: string;
+  downloads: number;
+}
+
+interface UserGrowthDataPoint {
+  date: string;
+  users: number;
+}
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats>({
@@ -89,6 +65,9 @@ export default function AdminDashboard() {
   });
   const [topContent, setTopContent] = useState<TopContentItem[]>([]);
   const [topLoading, setTopLoading] = useState(true);
+  const [activityData, setActivityData] = useState<ActivityDataPoint[]>([]);
+  const [userGrowthData, setUserGrowthData] = useState<UserGrowthDataPoint[]>([]);
+  const [chartLoading, setChartLoading] = useState(true);
 
   useEffect(() => {
     async function fetchStats() {
@@ -193,6 +172,87 @@ export default function AdminDashboard() {
 
     fetchStats();
     fetchTopContent();
+
+    async function fetchChartData() {
+      try {
+        // Fetch downloads for the last 30 days
+        const { data: downloads } = await supabase
+          .from("downloads")
+          .select("created_at")
+          .order("created_at", { ascending: false })
+          .limit(1000);
+
+        // Fetch users for the last 30 days
+        const { data: users } = await supabase
+          .from("users")
+          .select("created_at")
+          .order("created_at", { ascending: false })
+          .limit(1000);
+
+        // Generate last 30 days date labels
+        const today = new Date();
+        const last30Days: string[] = [];
+        for (let i = 29; i >= 0; i--) {
+          const d = new Date(today);
+          d.setDate(d.getDate() - i);
+          last30Days.push(d.toISOString().split("T")[0]);
+        }
+
+        const formatDate = (isoDate: string) => {
+          const d = new Date(isoDate);
+          return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        };
+
+        // Group downloads by date
+        const downloadCounts: Record<string, number> = {};
+        if (downloads) {
+          downloads.forEach((d) => {
+            const day = d.created_at.split("T")[0];
+            if (last30Days.includes(day)) {
+              downloadCounts[day] = (downloadCounts[day] || 0) + 1;
+            }
+          });
+        }
+
+        // Group users by date
+        const userCounts: Record<string, number> = {};
+        if (users) {
+          users.forEach((u) => {
+            const day = u.created_at.split("T")[0];
+            if (last30Days.includes(day)) {
+              userCounts[day] = (userCounts[day] || 0) + 1;
+            }
+          });
+        }
+
+        // Build activity data (last 30 days)
+        const activity: ActivityDataPoint[] = last30Days.map((day) => ({
+          date: formatDate(day),
+          downloads: downloadCounts[day] || 0,
+        }));
+
+        // Build user growth data (last 14 days)
+        const last14Days = last30Days.slice(-14);
+        const userGrowth: UserGrowthDataPoint[] = last14Days.map((day) => ({
+          date: formatDate(day),
+          users: userCounts[day] || 0,
+        }));
+
+        // Only set data if there are actual downloads/users
+        const hasDownloads = Object.values(downloadCounts).some((c) => c > 0);
+        const hasUsers = Object.values(userCounts).some((c) => c > 0);
+
+        setActivityData(hasDownloads ? activity : []);
+        setUserGrowthData(hasUsers ? userGrowth : []);
+      } catch {
+        setActivityData([]);
+        setUserGrowthData([]);
+      } finally {
+        setChartLoading(false);
+      }
+    }
+
+    fetchChartData();
   }, []);
 
   const statCards = [
@@ -261,40 +321,42 @@ export default function AdminDashboard() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-base font-medium text-[#222222]">Activity Overview</h2>
-              <p className="text-xs text-[#888888] mt-0.5">Sample data — real tracking coming soon</p>
+              <p className="text-xs text-[#888888] mt-0.5">Daily downloads over the last 30 days</p>
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#7A8A6E]" />
                 <span className="text-xs text-[#666666]">Downloads</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#A8B8A1]" />
-                <span className="text-xs text-[#666666]">Page Views</span>
-              </div>
             </div>
           </div>
           <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id="colorDownloads" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#7A8A6E" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="#7A8A6E" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#A8B8A1" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="#A8B8A1" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F0EDE8" vertical={false} />
-                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#888888" }} interval={4} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#888888" }} />
-                <Tooltip contentStyle={{ backgroundColor: "white", border: "1px solid #E8E4DC", borderRadius: "8px", fontSize: "12px" }} />
-                <Area type="monotone" dataKey="downloads" stroke="#7A8A6E" strokeWidth={2} fill="url(#colorDownloads)" />
-                <Area type="monotone" dataKey="pageViews" stroke="#A8B8A1" strokeWidth={2} fill="url(#colorViews)" />
-              </AreaChart>
-            </ResponsiveContainer>
+            {chartLoading ? (
+              <div className="flex items-center justify-center h-full">
+                <Loader2 className="w-6 h-6 text-[#7A8A6E] animate-spin" />
+              </div>
+            ) : activityData.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full">
+                <p className="text-sm text-[#888888]">Waiting for data...</p>
+                <p className="text-xs text-[#888888] mt-1">Download activity will appear here once users start downloading.</p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={activityData}>
+                  <defs>
+                    <linearGradient id="colorDownloads" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#7A8A6E" stopOpacity={0.15} />
+                      <stop offset="95%" stopColor="#7A8A6E" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F0EDE8" vertical={false} />
+                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#888888" }} interval={4} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#888888" }} />
+                  <Tooltip contentStyle={{ backgroundColor: "white", border: "1px solid #E8E4DC", borderRadius: "8px", fontSize: "12px" }} />
+                  <Area type="monotone" dataKey="downloads" stroke="#7A8A6E" strokeWidth={2} fill="url(#colorDownloads)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </motion.div>
 
@@ -348,7 +410,7 @@ export default function AdminDashboard() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-base font-medium text-[#222222]">New Users</h2>
-              <p className="text-xs text-[#888888] mt-0.5">Sample data — real tracking coming soon</p>
+              <p className="text-xs text-[#888888] mt-0.5">Daily new registrations over the last 14 days</p>
             </div>
             <div className="flex items-center gap-1 text-emerald-600 text-xs font-medium">
               <ArrowUpRight className="w-3.5 h-3.5" />
@@ -356,15 +418,26 @@ export default function AdminDashboard() {
             </div>
           </div>
           <div className="h-[220px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData.slice(-14)}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F0EDE8" vertical={false} />
-                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#888888" }} interval={2} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#888888" }} />
-                <Tooltip contentStyle={{ backgroundColor: "white", border: "1px solid #E8E4DC", borderRadius: "8px", fontSize: "12px" }} />
-                <Bar dataKey="users" fill="#7A8A6E" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            {chartLoading ? (
+              <div className="flex items-center justify-center h-full">
+                <Loader2 className="w-6 h-6 text-[#7A8A6E] animate-spin" />
+              </div>
+            ) : userGrowthData.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full">
+                <p className="text-sm text-[#888888]">Waiting for data...</p>
+                <p className="text-xs text-[#888888] mt-1">User registrations will appear here once new users sign up.</p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={userGrowthData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F0EDE8" vertical={false} />
+                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#888888" }} interval={2} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#888888" }} />
+                  <Tooltip contentStyle={{ backgroundColor: "white", border: "1px solid #E8E4DC", borderRadius: "8px", fontSize: "12px" }} />
+                  <Bar dataKey="users" fill="#7A8A6E" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </motion.div>
 

@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Plus, Eye, Calendar, BookOpen, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable, Column } from "@/components/admin/data-table";
 import { BibleStory } from "@/lib/supabase";
 import { supabase } from "@/lib/supabase";
+import UploadModal from "@/components/admin/upload-modal";
 
 const statusColors: Record<string, string> = {
   published: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -94,29 +95,31 @@ export default function BibleStoriesPage() {
   const [stories, setStories] = useState<BibleStory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
+
+  // 提取 fetchStories 到组件级别，便于 UploadModal 成功后刷新
+  const fetchStories = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from("bible_stories")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        setError(error.message);
+      } else {
+        setStories(data || []);
+      }
+    } catch (err: any) {
+      setError(err?.message || "Failed to fetch Bible stories");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    async function fetchStories() {
-      try {
-        const { data, error } = await supabase
-          .from("bible_stories")
-          .select("*")
-          .order("created_at", { ascending: false });
-
-        if (error) {
-          setError(error.message);
-        } else {
-          setStories(data || []);
-        }
-      } catch (err: any) {
-        setError(err?.message || "Failed to fetch Bible stories");
-      } finally {
-        setLoading(false);
-      }
-    }
-
     fetchStories();
-  }, []);
+  }, [fetchStories]);
 
   return (
     <div className="space-y-6">
@@ -132,7 +135,7 @@ export default function BibleStoriesPage() {
           <p className="text-sm text-[#666666] mt-1">Manage your Bible story collection</p>
         </div>
         <Button
-          onClick={() => alert("Add Bible story feature coming soon. Please add stories directly in Supabase for now.")}
+          onClick={() => setShowModal(true)}
           className="bg-[#7A8A6E] hover:bg-[#6A7A5E] text-white rounded-lg h-10 px-5 text-sm font-medium gap-2"
         >
           <Plus className="w-4 h-4" />
@@ -190,6 +193,15 @@ export default function BibleStoriesPage() {
           onDelete={(story) => console.log("Delete", story.id)}
         />
       )}
+      <UploadModal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        type="bible-story"
+        onSuccess={() => {
+          setShowModal(false);
+          fetchStories();
+        }}
+      />
     </div>
   );
 }
