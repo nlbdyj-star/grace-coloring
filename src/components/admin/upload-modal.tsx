@@ -33,7 +33,7 @@ export default function UploadModal({ open, onClose, type, onSuccess }: UploadMo
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState("");
-  const [status, setStatus] = useState("draft");
+  const [status, setStatus] = useState("published");
 
   // ---------- Video 字段 ----------
   const [youtubeUrl, setYoutubeUrl] = useState("");
@@ -123,7 +123,7 @@ export default function UploadModal({ open, onClose, type, onSuccess }: UploadMo
     setTitle("");
     setDescription("");
     setTags("");
-    setStatus("draft");
+    setStatus("published");
     setYoutubeUrl("");
     setThumbnailFile(null);
     setThumbnailPreview(null);
