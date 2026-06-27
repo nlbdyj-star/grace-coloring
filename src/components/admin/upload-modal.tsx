@@ -169,11 +169,12 @@ export default function UploadModal({ open, onClose, type, onSuccess }: UploadMo
             thumbnailUrl = await uploadFile(thumbnailFile, "video");
           }
 
-          // 生成 slug
-          const slug = title
+          // 生成 slug（避免重复，添加时间戳后缀）
+          const baseSlug = title
             .toLowerCase()
             .replace(/\s+/g, "-")
             .replace(/[^a-z0-9-]/g, "");
+          const slug = `${baseSlug}-${Date.now()}`;
 
           // 解析 tags
           const parsedTags = tags
@@ -210,10 +211,11 @@ export default function UploadModal({ open, onClose, type, onSuccess }: UploadMo
             coloredPreviewUrl = await uploadFile(coloredPreviewFile, "coloring");
           }
 
-          const slug = title
+          const baseSlug = title
             .toLowerCase()
             .replace(/\s+/g, "-")
             .replace(/[^a-z0-9-]/g, "");
+          const slug = `${baseSlug}-${Date.now()}`;
 
           const parsedTags = tags
             .split(",")
@@ -283,10 +285,11 @@ export default function UploadModal({ open, onClose, type, onSuccess }: UploadMo
             heroImageUrl = await uploadFile(heroImageFile, "bible-story");
           }
 
-          const slug = title
+          const baseSlug = title
             .toLowerCase()
             .replace(/\s+/g, "-")
             .replace(/[^a-z0-9-]/g, "");
+          const slug = `${baseSlug}-${Date.now()}`;
 
           const { error: insertError } = await supabase.from("bible_stories").insert({
             title: title.trim(),
@@ -305,10 +308,11 @@ export default function UploadModal({ open, onClose, type, onSuccess }: UploadMo
         case "category": {
           if (!name.trim()) throw new Error("请输入分类名称");
 
-          const slug = name
+          const baseSlug = name
             .toLowerCase()
             .replace(/\s+/g, "-")
             .replace(/[^a-z0-9-]/g, "");
+          const slug = `${baseSlug}-${Date.now()}`;
 
           const { error: insertError } = await supabase.from("categories").insert({
             name: name.trim(),
@@ -433,7 +437,7 @@ export default function UploadModal({ open, onClose, type, onSuccess }: UploadMo
         </div>
 
         {/* 表单区域（可滚动） */}
-        <form onSubmit={handleSubmit} className="overflow-y-auto flex-1 px-6 py-5 space-y-4">
+        <form id="upload-form" onSubmit={handleSubmit} className="overflow-y-auto flex-1 px-6 py-5 space-y-4">
           {/* 错误提示 */}
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
@@ -620,13 +624,6 @@ export default function UploadModal({ open, onClose, type, onSuccess }: UploadMo
             type="submit"
             form="upload-form"
             disabled={submitting}
-            onClick={(e) => {
-              // 获取表单元素并触发 submit
-              const form = (e.currentTarget as HTMLElement).closest("form");
-              if (form) {
-                form.requestSubmit();
-              }
-            }}
             className="bg-[#7A8A6E] hover:bg-[#6A7A5E] text-white rounded-lg h-10 px-5 text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {submitting ? (

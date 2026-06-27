@@ -38,18 +38,19 @@ export async function POST(request: NextRequest) {
 
     if (uploadError) {
       // 如果 bucket 不存在，给出明确提示
-      if (uploadError.message.includes("Bucket not found") || uploadError.message.includes("does not exist")) {
+      const msg = uploadError.message || "";
+      if (msg.includes("Bucket not found") || msg.includes("does not exist") || msg.includes("bucket")) {
         return NextResponse.json(
           {
             error:
-              'Storage bucket "media" 不存在。请在 Supabase 后台创建一个名为 "media" 的 public bucket。',
+              'Storage bucket "media" 不存在或没有写入权限。请在 Supabase 后台：1) 创建名为 "media" 的 bucket 并设为 public；2) 添加匿名用户上传权限策略。',
           },
           { status: 500 }
         );
       }
       console.error("文件上传错误:", uploadError);
       return NextResponse.json(
-        { error: `上传失败: ${uploadError.message}` },
+        { error: `上传失败: ${msg}` },
         { status: 500 }
       );
     }
