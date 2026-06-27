@@ -48,7 +48,6 @@ export default function AdminLoginPage() {
         transition={{ duration: 0.5 }}
         className="w-full max-w-md"
       >
-        {/* Logo */}
         <div className="text-center mb-8">
           <div className="w-12 h-12 mx-auto mb-4">
             <svg viewBox="0 0 36 36" fill="none" className="w-full h-full">
