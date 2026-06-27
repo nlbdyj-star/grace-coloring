@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowRight, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -57,20 +58,24 @@ export function HeroSection() {
               transition={{ duration: 0.7, delay: 0.6 }}
               className="flex flex-col sm:flex-row gap-3 sm:gap-4"
             >
-              <Button
-                className="bg-[#7A8A6E] hover:bg-[#6A7A5E] text-white rounded-full px-6 sm:px-8 py-5 sm:py-6 text-sm sm:text-base font-medium transition-all duration-300 hover:shadow-lg hover:shadow-[#7A8A6E]/20"
-              >
-                Explore Coloring Pages
-                <ArrowRight className="ml-2 w-4 h-4" />
-              </Button>
+              <Link href="/coloring-pages">
+                <Button
+                  className="bg-[#7A8A6E] hover:bg-[#6A7A5E] text-white rounded-full px-6 sm:px-8 py-5 sm:py-6 text-sm sm:text-base font-medium transition-all duration-300 hover:shadow-lg hover:shadow-[#7A8A6E]/20 w-full"
+                >
+                  Explore Coloring Pages
+                  <ArrowRight className="ml-2 w-4 h-4" />
+                </Button>
+              </Link>
 
-              <Button
-                variant="outline"
-                className="border-[#E8E4DC] text-[#222222] hover:bg-[#F5F2EC] rounded-full px-6 sm:px-8 py-5 sm:py-6 text-sm sm:text-base font-medium transition-all duration-300"
-              >
-                <Play className="mr-2 w-4 h-4" />
-                Watch Stories
-              </Button>
+              <Link href="/videos">
+                <Button
+                  variant="outline"
+                  className="border-[#E8E4DC] text-[#222222] hover:bg-[#F5F2EC] rounded-full px-6 sm:px-8 py-5 sm:py-6 text-sm sm:text-base font-medium transition-all duration-300 w-full"
+                >
+                  <Play className="mr-2 w-4 h-4" />
+                  Watch Stories
+                </Button>
+              </Link>
             </motion.div>
           </motion.div>
 

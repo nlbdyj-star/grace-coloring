@@ -23,6 +23,7 @@ export function LatestColoringPages() {
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [pages, setPages] = useState<ColoringPageItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     supabase
@@ -32,7 +33,10 @@ export function LatestColoringPages() {
       .order("created_at", { ascending: false })
       .limit(8)
       .then(({ data, error }) => {
-        if (!error && data) {
+        if (error) {
+          console.error("LatestColoringPages fetch error:", error.message);
+          setError(error.message);
+        } else if (data) {
           setPages(data);
         }
         setLoading(false);
@@ -79,6 +83,11 @@ export function LatestColoringPages() {
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-8 h-8 animate-spin text-[#7A8A6E]" />
           </div>
+        ) : error ? (
+          <div className="text-center py-20">
+            <p className="text-lg text-red-500">Failed to load content. Please try again later.</p>
+            <p className="text-sm text-[#888888] mt-2">{error}</p>
+          </div>
         ) : pages.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-lg text-[#666666]">No coloring pages available yet</p>
@@ -112,16 +121,18 @@ export function LatestColoringPages() {
                       loading="lazy"
                     />
                     {/* Colored version (on hover) */}
-                    <Image
-                      src={page.colored_preview_image}
-                      alt={`${page.title} - colored`}
-                      fill
-                      className={`object-cover transition-opacity duration-500 absolute inset-0 ${
-                        hoveredId === page.id ? "opacity-100" : "opacity-0"
-                      }`}
-                      sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                      loading="lazy"
-                    />
+                    {page.colored_preview_image && (
+                      <Image
+                        src={page.colored_preview_image}
+                        alt={`${page.title} - colored`}
+                        fill
+                        className={`object-cover transition-opacity duration-500 absolute inset-0 ${
+                          hoveredId === page.id ? "opacity-100" : "opacity-0"
+                        }`}
+                        sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                        loading="lazy"
+                      />
+                    )}
 
                     {/* Hover Actions */}
                     <div

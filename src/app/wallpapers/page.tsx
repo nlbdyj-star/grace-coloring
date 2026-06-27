@@ -12,6 +12,7 @@ import type { Wallpaper } from "@/lib/supabase";
 export default function WallpapersPage() {
   const [wallpapers, setWallpapers] = useState<Wallpaper[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     supabase
@@ -20,7 +21,10 @@ export default function WallpapersPage() {
       .eq("status", "published")
       .order("created_at", { ascending: false })
       .then(({ data, error }) => {
-        if (!error && data) {
+        if (error) {
+          console.error("Wallpapers page fetch error:", error.message);
+          setError(error.message);
+        } else if (data) {
           setWallpapers(data);
         }
         setLoading(false);
@@ -50,6 +54,11 @@ export default function WallpapersPage() {
             <div className="flex items-center justify-center py-20">
               <Loader2 className="w-8 h-8 animate-spin text-[#7A8A6E]" />
             </div>
+          ) : error ? (
+            <div className="text-center py-20">
+              <p className="text-lg text-red-500">Failed to load wallpapers: {error}</p>
+              <p className="text-sm text-[#888888] mt-2">Please check your database connection and try again.</p>
+            </div>
           ) : wallpapers.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
@@ -72,14 +81,20 @@ export default function WallpapersPage() {
                   className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow duration-500 group"
                 >
                   <div className="relative aspect-[4/3] overflow-hidden">
-                    <Image
-                      src={wallpaper.image_original}
-                      alt={wallpaper.title}
-                      fill
-                      className="object-cover transition-transform duration-700 group-hover:scale-[1.02]"
-                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                      loading="lazy"
-                    />
+                    {wallpaper.image_original ? (
+                      <Image
+                        src={wallpaper.image_original}
+                        alt={wallpaper.title}
+                        fill
+                        className="object-cover transition-transform duration-700 group-hover:scale-[1.02]"
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-[#F5F2EC]">
+                        <ImageIcon className="w-8 h-8 text-[#888888]" />
+                      </div>
+                    )}
                     <a
                       href={wallpaper.image_original}
                       target="_blank"

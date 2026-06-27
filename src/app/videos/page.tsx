@@ -11,6 +11,7 @@ import type { Video } from "@/lib/supabase";
 export default function VideosPage() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     supabase
@@ -19,7 +20,10 @@ export default function VideosPage() {
       .eq("status", "published")
       .order("created_at", { ascending: false })
       .then(({ data, error }) => {
-        if (!error && data) {
+        if (error) {
+          console.error("Videos page fetch error:", error.message);
+          setError(error.message);
+        } else if (data) {
           setVideos(data);
         }
         setLoading(false);
@@ -59,6 +63,11 @@ export default function VideosPage() {
           {loading ? (
             <div className="flex items-center justify-center py-20">
               <Loader2 className="w-8 h-8 animate-spin text-[#7A8A6E]" />
+            </div>
+          ) : error ? (
+            <div className="text-center py-20">
+              <p className="text-lg text-red-500">Failed to load videos: {error}</p>
+              <p className="text-sm text-[#888888] mt-2">Please check your database connection and try again.</p>
             </div>
           ) : videos.length === 0 ? (
             <motion.div

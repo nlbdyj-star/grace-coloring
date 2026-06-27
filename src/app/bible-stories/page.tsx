@@ -11,6 +11,7 @@ import type { BibleStory } from "@/lib/supabase";
 export default function BibleStoriesPage() {
   const [stories, setStories] = useState<BibleStory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     supabase
@@ -19,7 +20,10 @@ export default function BibleStoriesPage() {
       .eq("status", "published")
       .order("created_at", { ascending: false })
       .then(({ data, error }) => {
-        if (!error && data) {
+        if (error) {
+          console.error("Bible stories page fetch error:", error.message);
+          setError(error.message);
+        } else if (data) {
           setStories(data);
         }
         setLoading(false);
@@ -48,6 +52,11 @@ export default function BibleStoriesPage() {
           {loading ? (
             <div className="flex items-center justify-center py-20">
               <Loader2 className="w-8 h-8 animate-spin text-[#7A8A6E]" />
+            </div>
+          ) : error ? (
+            <div className="text-center py-20">
+              <p className="text-lg text-red-500">Failed to load Bible stories: {error}</p>
+              <p className="text-sm text-[#888888] mt-2">Please check your database connection and try again.</p>
             </div>
           ) : stories.length === 0 ? (
             <motion.div

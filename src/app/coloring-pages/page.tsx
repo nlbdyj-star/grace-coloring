@@ -12,6 +12,7 @@ import type { ColoringPage } from "@/lib/supabase";
 export default function ColoringPagesPage() {
   const [pages, setPages] = useState<ColoringPage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     supabase
@@ -20,7 +21,10 @@ export default function ColoringPagesPage() {
       .eq("status", "published")
       .order("created_at", { ascending: false })
       .then(({ data, error }) => {
-        if (!error && data) {
+        if (error) {
+          console.error("Coloring pages page fetch error:", error.message);
+          setError(error.message);
+        } else if (data) {
           setPages(data);
         }
         setLoading(false);
@@ -50,6 +54,11 @@ export default function ColoringPagesPage() {
             <div className="flex items-center justify-center py-20">
               <Loader2 className="w-8 h-8 animate-spin text-[#7A8A6E]" />
             </div>
+          ) : error ? (
+            <div className="text-center py-20">
+              <p className="text-lg text-red-500">Failed to load coloring pages: {error}</p>
+              <p className="text-sm text-[#888888] mt-2">Please check your database connection and try again.</p>
+            </div>
           ) : pages.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
@@ -72,14 +81,20 @@ export default function ColoringPagesPage() {
                   className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow duration-500 group"
                 >
                   <div className="relative aspect-[3/4] overflow-hidden">
-                    <Image
-                      src={page.line_art_image}
-                      alt={page.title}
-                      fill
-                      className="object-cover transition-transform duration-700 group-hover:scale-[1.02]"
-                      sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                      loading="lazy"
-                    />
+                    {page.line_art_image ? (
+                      <Image
+                        src={page.line_art_image}
+                        alt={page.title}
+                        fill
+                        className="object-cover transition-transform duration-700 group-hover:scale-[1.02]"
+                        sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-[#F5F2EC]">
+                        <Palette className="w-8 h-8 text-[#888888]" />
+                      </div>
+                    )}
                     {page.pdf_file && (
                       <a
                         href={page.pdf_file}

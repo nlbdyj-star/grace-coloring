@@ -28,7 +28,9 @@ export function FreeDownloads() {
       .select("*", { count: "exact", head: true })
       .eq("status", "published")
       .then(({ count, error }) => {
-        if (!error && count !== null) {
+        if (error) {
+          console.error("FreeDownloads coloring_pages fetch error:", error.message);
+        } else if (count !== null) {
           setColoringCount(count);
         }
         setLoadingColoring(false);
@@ -39,7 +41,9 @@ export function FreeDownloads() {
       .select("*", { count: "exact", head: true })
       .eq("status", "published")
       .then(({ count, error }) => {
-        if (!error && count !== null) {
+        if (error) {
+          console.error("FreeDownloads wallpapers fetch error:", error.message);
+        } else if (count !== null) {
           setWallpaperCount(count);
         }
         setLoadingWallpaper(false);
